@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Patrimonio Digital AR - Tori Mask</title>
+    <title>Experiencia AR - Tori Mask</title>
 
     <!-- ===================================================== -->
-    <!-- 1. CONFIGURACIÓN DE LA OBRA (EDITAR AQUÍ)             -->
+    <!-- 1. CONFIGURACIÓN DEL PROYECTO (EDITAR AQUÍ)           -->
     <!-- ===================================================== -->
     <script>
         window.ficha = {
@@ -18,48 +18,52 @@
             marcadorMind: "./targets/imagen_rastreo.mind",
 
             // Ajustes visuales del modelo sobre la imagen
-            escala: 1.2,               // Tamaño relativo sobre la imagen (1.0 = tamaño del marcador)
+            escala: 1.2,               // Tamaño relativo sobre la imagen
             rotacionInicial: "0 0 0",  // Cambia a "90 0 0" si el modelo aparece acostado
 
-            // Datos de la Ficha Patrimonial (UI)
-            categoria: "PATRIMONIO DIGITAL INTERACTIVO",
+            // Parámetros de optimización de archivos descargados
+            calidadFotoJPEG: 0.82,     // 0.82 = excelente calidad visual con ~80% menos peso
+            resolucionMaxPx: 960,      // Límite de píxeles en el lado mayor para ahorrar peso
+            bitrateVideo: 1200000,     // 1.2 Mbps (~150 KB por segundo de grabación)
+
+            // Datos de la Ficha Informativa (UI)
+            categoria: "EXPERIENCIA INTERACTIVA",
             titulo: "TORI MASK",
             autor: "Colección Digital",
             anio: "2026",
-            ubicacion: "Exhibición de Realidad Aumentada",
-            mapa: "", // Si pones un link de Google Maps, aparecerá el botón automáticamente
-            historia: "Pieza tridimensional optimizada y animada para visualización mediante reconocimiento de imagen (Image Tracking). Al detectar el marcador gráfico, el modelo se despliega en el espacio físico reproduciendo su secuencia de animación en tiempo real."
+            ubicacion: "Realidad Aumentada Web",
+            mapa: "",
+            historia: "Pieza tridimensional animada desplegada mediante reconocimiento óptico de imagen. Usa los botones en pantalla para capturar fotografías o grabar video en formato ligero."
         };
     </script>
 
     <!-- ===================================================== -->
     <!-- 2. LIBRERÍAS GRATUITAS: A-FRAME + MINDAR + MESHOPT    -->
-    <!-- NO MODIFICAR                                          -->
     <!-- ===================================================== -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-    <!-- Decodificador obligatorio para archivos comprimidos (-opt.glb) -->
     <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 
     <style>
         * {
             box-sizing: border-box;
             -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
 
         body {
             margin: 0;
             padding: 0;
             overflow: hidden;
-            font-family: Arial, Helvetica, sans-serif;
-            background-color: #121212;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: #000000;
             color: #222222;
         }
 
         /* ================================================= */
-        /* BARRA SUPERIOR Y DIAGNÓSTICO DE CARGA             */
+        /* BARRA SUPERIOR (SOLO ESTADO Y BOTÓN DE FICHA)     */
         /* ================================================= */
-        .header-ar {
+        .top-bar {
             position: fixed;
             top: 0;
             left: 0;
@@ -68,29 +72,38 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 18px;
-            background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 100%);
-            color: white;
+            padding: 14px 16px;
             pointer-events: none;
-        }
-
-        .marca {
-            font-size: 13px;
-            font-weight: bold;
-            letter-spacing: 2px;
         }
 
         #estadoCarga {
             font-size: 11px;
-            background: rgba(32, 32, 32, 0.85);
+            color: #ffffff;
+            background: rgba(20, 20, 20, 0.75);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 6px 12px;
+            padding: 7px 13px;
             border-radius: 20px;
-            backdrop-filter: blur(6px);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        #btnAbrirFicha {
+            pointer-events: auto;
+            display: none;
+            background: rgba(255, 255, 255, 0.9);
+            color: #111111;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            cursor: pointer;
         }
 
         /* ================================================= */
-        /* GUÍA DE ESCANEO (CUANDO NO SE DETECTA LA IMAGEN)  */
+        /* GUÍA DE ESCANEO                                   */
         /* ================================================= */
         #ui-escaneo {
             position: fixed;
@@ -108,14 +121,14 @@
         }
 
         .marco-escaner {
-            width: 68vw;
-            max-width: 260px;
-            height: 68vw;
-            max-height: 260px;
+            width: 65vw;
+            max-width: 250px;
+            height: 65vw;
+            max-height: 250px;
             border: 2px dashed rgba(255, 255, 255, 0.75);
             border-radius: 20px;
             position: relative;
-            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.45);
+            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.38);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -130,25 +143,202 @@
         }
 
         @keyframes barrido {
-            0%, 100% { transform: translateY(-90px); opacity: 0.3; }
-            50% { transform: translateY(90px); opacity: 1; }
+            0%, 100% { transform: translateY(-85px); opacity: 0.3; }
+            50% { transform: translateY(85px); opacity: 1; }
         }
 
         .instruccion-ar {
-            margin-top: 24px;
-            background: rgba(20, 20, 20, 0.85);
+            margin-top: 22px;
+            background: rgba(20, 20, 20, 0.82);
             color: #f2f0eb;
             padding: 10px 18px;
             border-radius: 30px;
             font-size: 13px;
-            letter-spacing: 0.5px;
             text-align: center;
-            max-width: 85%;
+            max-width: 82%;
             backdrop-filter: blur(6px);
         }
 
         /* ================================================= */
-        /* TARJETA INFERIOR Y FICHA PATRIMONIAL              */
+        /* CONTROLES DE FOTO Y VIDEO                         */
+        /* ================================================= */
+        .dock-captura {
+            position: fixed;
+            bottom: 26px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 280;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: rgba(20, 20, 20, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 10px 18px;
+            border-radius: 40px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+        }
+
+        .btn-captura {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            border-radius: 30px;
+            padding: 11px 18px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s ease, background-color 0.2s ease;
+        }
+
+        .btn-captura:active {
+            transform: scale(0.94);
+        }
+
+        #btnFoto {
+            background-color: #ffffff;
+            color: #111111;
+        }
+
+        #btnVideo {
+            background-color: #ff3b30;
+            color: #ffffff;
+        }
+
+        #btnVideo.grabando {
+            background-color: #ffffff;
+            color: #ff3b30;
+            animation: latido 1.2s infinite;
+        }
+
+        @keyframes latido {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
+        }
+
+        .punto-rec {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: currentColor;
+            display: inline-block;
+        }
+
+        /* Efecto flash al tomar foto */
+        #flashPantalla {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #ffffff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 500;
+            transition: opacity 0.25s ease;
+        }
+
+        /* ================================================= */
+        /* MODAL DE VISTA PREVIA Y DESCARGA LIGERA           */
+        /* ================================================= */
+        #modalPreview {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 600;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #modalPreview.activo {
+            display: flex;
+        }
+
+        .tarjeta-preview {
+            background: #1c1c1e;
+            border-radius: 20px;
+            padding: 16px;
+            width: 100%;
+            max-width: 380px;
+            color: #ffffff;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .cabecera-preview {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 13px;
+            color: #aeaeb2;
+        }
+
+        #pesoArchivo {
+            background: #2c2c2e;
+            color: #30d158;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .contenedor-media {
+            width: 100%;
+            max-height: 58vh;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .contenedor-media img,
+        .contenedor-media video {
+            max-width: 100%;
+            max-height: 58vh;
+            object-fit: contain;
+            display: block;
+        }
+
+        .acciones-preview {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 13px;
+            border: none;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #btnCerrarPreview {
+            background: #2c2c2e;
+            color: #ffffff;
+        }
+
+        #btnDescargar {
+            background: #0a84ff;
+            color: #ffffff;
+        }
+
+        /* ================================================= */
+        /* PANEL DE FICHA INFORMATIVA                        */
         /* ================================================= */
         #panelInferior {
             position: fixed;
@@ -159,10 +349,10 @@
             max-width: 600px;
             background-color: #f2f0eb;
             border-radius: 22px 22px 0 0;
-            padding: 20px 24px 26px 24px;
-            z-index: 250;
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
-            transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+            padding: 20px 24px 28px 24px;
+            z-index: 400;
+            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             max-height: 80vh;
             overflow-y: auto;
         }
@@ -171,19 +361,12 @@
             transform: translate(-50%, 0%);
         }
 
-        .barra-arrastre {
-            width: 42px;
-            height: 4px;
-            background-color: #cccccc;
-            border-radius: 4px;
-            margin: 0 auto 14px auto;
-        }
-
         .cabecera-ficha {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             gap: 12px;
+            margin-bottom: 14px;
         }
 
         .badge-categoria {
@@ -195,44 +378,34 @@
             background-color: #202020;
             padding: 5px 10px;
             border-radius: 6px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .titulo-obra {
             margin: 0;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
             color: #202020;
         }
 
-        .boton-detalles {
+        .boton-cerrar-ficha {
             background-color: #202020;
             color: #ffffff;
             border: none;
             border-radius: 8px;
-            padding: 10px 14px;
+            padding: 9px 14px;
             font-size: 12px;
             font-weight: bold;
             cursor: pointer;
-            white-space: nowrap;
-        }
-
-        #contenidoExpandible {
-            display: none;
-            margin-top: 18px;
-            padding-top: 16px;
-            border-top: 1px solid #dcd9d0;
-        }
-
-        #contenidoExpandible.abierto {
-            display: block;
         }
 
         .datos-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 14px;
-            margin-bottom: 16px;
+            padding-top: 14px;
+            border-top: 1px solid #dcd9d0;
+            margin-bottom: 14px;
         }
 
         .etiqueta {
@@ -254,7 +427,7 @@
             font-size: 14px;
             line-height: 1.6;
             color: #444444;
-            margin: 12px 0 0 0;
+            margin: 8px 0 0 0;
             white-space: pre-line;
         }
 
@@ -275,9 +448,89 @@
     </style>
 
     <!-- ===================================================== -->
-    <!-- 3. COMPONENTE PERSONALIZADO: CARGA MESHOPT Y ANIMA    -->
+    <!-- 3. COMPONENTES 3D Y COMPOSITOR DE FOTO/VIDEO          -->
     <!-- ===================================================== -->
     <script>
+        // Estado global del capturador
+        window.capturadorAR = {
+            solicitarFoto: false,
+            grabandoVideo: false,
+            canvasCompuesto: null,
+            ctxCompuesto: null
+        };
+
+        // Componente que fusiona el video de la cámara + el modelo 3D en cada frame
+        AFRAME.registerComponent('compositor-ar', {
+            init: function () {
+                const canvas = document.createElement('canvas');
+                window.capturadorAR.canvasCompuesto = canvas;
+                window.capturadorAR.ctxCompuesto = canvas.getContext('2d', { alpha: false });
+            },
+
+            // tock() se ejecuta inmediatamente después de que A-Frame dibuja el modelo 3D
+            tock: function () {
+                if (!window.capturadorAR.solicitarFoto && !window.capturadorAR.grabandoVideo) return;
+
+                const glCanvas = this.el.canvas;
+                const video = document.querySelector('video');
+                if (!glCanvas) return;
+
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                const maxDim = window.ficha.resolucionMaxPx || 960;
+                const escala = Math.min(1, maxDim / Math.max(vw, vh));
+
+                // Asegurar dimensiones pares para codificadores de video
+                const outW = Math.round((vw * escala) / 2) * 2;
+                const outH = Math.round((vh * escala) / 2) * 2;
+
+                const compCanvas = window.capturadorAR.canvasCompuesto;
+                const ctx = window.capturadorAR.ctxCompuesto;
+
+                if (compCanvas.width !== outW || compCanvas.height !== outH) {
+                    compCanvas.width = outW;
+                    compCanvas.height = outH;
+                }
+
+                // 1. Fondo negro base
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, outW, outH);
+
+                // 2. Dibujar el feed de la cámara respetando su proporción en pantalla
+                if (video && video.readyState >= 2) {
+                    const vRect = video.getBoundingClientRect();
+                    ctx.drawImage(
+                        video,
+                        (vRect.left / vw) * outW,
+                        (vRect.top / vh) * outH,
+                        (vRect.width / vw) * outW,
+                        (vRect.height / vh) * outH
+                    );
+                }
+
+                // 3. Superponer el modelo 3D animado
+                const cRect = glCanvas.getBoundingClientRect();
+                ctx.drawImage(
+                    glCanvas,
+                    (cRect.left / vw) * outW,
+                    (cRect.top / vh) * outH,
+                    (cRect.width / vw) * outW,
+                    (cRect.height / vh) * outH
+                );
+
+                // Si se pidió una foto, comprimir en JPEG ligero
+                if (window.capturadorAR.solicitarFoto) {
+                    window.capturadorAR.solicitarFoto = false;
+                    compCanvas.toBlob((blob) => {
+                        if (blob && window.mostrarVistaPreviaArchivo) {
+                            window.mostrarVistaPreviaArchivo(blob, 'foto');
+                        }
+                    }, 'image/jpeg', window.ficha.calidadFotoJPEG || 0.82);
+                }
+            }
+        });
+
+        // Componente de carga y animación del archivo GLB con soporte Meshopt
         AFRAME.registerComponent('modelo-animado-ar', {
             init: function () {
                 this.mixer = null;
@@ -292,12 +545,10 @@
                 const cargarGLB = () => {
                     const loader = new AFRAME.THREE.GLTFLoader();
 
-                    // Activar decodificador Meshopt (indispensable para giro-torimask-opt.glb)
                     if (window.MeshoptDecoder) {
                         loader.setMeshoptDecoder(window.MeshoptDecoder);
                     }
 
-                    // Activar decodificador Draco por compatibilidad adicional
                     if (AFRAME.THREE.DRACOLoader) {
                         const dracoLoader = new AFRAME.THREE.DRACOLoader();
                         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
@@ -308,8 +559,6 @@
                         window.ficha.modelo,
                         (gltf) => {
                             const model = gltf.scene;
-
-                            // Contenedor para normalizar escala y centrar el modelo sobre la imagen
                             const wrapper = new AFRAME.THREE.Group();
                             wrapper.add(model);
 
@@ -327,7 +576,6 @@
                             el.setObject3D('mesh', wrapper);
                             this.contenedor = wrapper;
 
-                            // Extraer todas las animaciones guardadas en el archivo GLB
                             if (gltf.animations && gltf.animations.length > 0) {
                                 this.mixer = new AFRAME.THREE.AnimationMixer(model);
                                 gltf.animations.forEach((clip) => {
@@ -335,17 +583,16 @@
                                     action.setLoop(AFRAME.THREE.LoopRepeat, Infinity);
                                     this.actions.push(action);
                                 });
-                                estadoUI.textContent = "✓ Modelo y animación listos";
+                                estadoUI.textContent = "✓ Listo para escanear";
                             } else {
-                                // Si el GLB no tuviera keyframes internos, aplicamos rotación continua
                                 this.giroRespaldo = true;
-                                estadoUI.textContent = "✓ Modelo listo (giro activo)";
+                                estadoUI.textContent = "✓ Listo para escanear";
                             }
                         },
                         undefined,
                         (error) => {
-                            console.error("Error cargando el modelo GLB:", error);
-                            estadoUI.textContent = "⚠️ Error al cargar el archivo .glb";
+                            console.error("Error cargando GLB:", error);
+                            estadoUI.textContent = "⚠️ Error al cargar modelo";
                             estadoUI.style.backgroundColor = "#8b0000";
                         }
                     );
@@ -357,7 +604,6 @@
                     cargarGLB();
                 }
 
-                // Escuchar eventos cuando MindAR detecta o pierde la imagen
                 const targetEl = document.getElementById('objetivoAR');
 
                 targetEl.addEventListener('targetFound', () => {
@@ -382,7 +628,6 @@
 
             tick: function (time, timeDelta) {
                 if (!this.activo) return;
-
                 const delta = timeDelta / 1000;
                 if (this.mixer) {
                     this.mixer.update(delta);
@@ -396,75 +641,100 @@
 
 <body>
 
-    <!-- ===================================================== -->
-    <!-- INTERFAZ DE USUARIO (UI)                              -->
-    <!-- ===================================================== -->
-    <header class="header-ar">
-        <div class="marca">PATRIMONIO DIGITAL</div>
-        <div id="estadoCarga">Cargando modelo 3D...</div>
-    </header>
+    <!-- Efecto de flash para fotografía -->
+    <div id="flashPantalla"></div>
 
+    <!-- Barra superior limpia (sin título fijo) -->
+    <div class="top-bar">
+        <div id="estadoCarga">Cargando experiencia...</div>
+        <button id="btnAbrirFicha">ℹ️ VER FICHA</button>
+    </div>
+
+    <!-- Guía de escaneo -->
     <div id="ui-escaneo">
         <div class="marco-escaner">
             <div class="linea-escaner"></div>
         </div>
         <div class="instruccion-ar">
-            Apunta la cámara hacia la imagen marcador para desplegar la pieza animada
+            Apunta la cámara hacia la imagen marcador
         </div>
     </div>
 
+    <!-- Barra flotante para tomar foto o grabar video -->
+    <div class="dock-captura">
+        <button class="btn-captura" id="btnFoto">
+            📷 Foto
+        </button>
+        <button class="btn-captura" id="btnVideo">
+            <span class="punto-rec"></span>
+            <span id="textoBtnVideo">Grabar</span>
+        </button>
+    </div>
+
+    <!-- Modal de vista previa y descarga optimizada -->
+    <div id="modalPreview">
+        <div class="tarjeta-preview">
+            <div class="cabecera-preview">
+                <span id="tituloPreview">Captura lista</span>
+                <span id="pesoArchivo">0 KB</span>
+            </div>
+            <div class="contenedor-media" id="contenedorMedia"></div>
+            <div class="acciones-preview">
+                <button class="btn-modal" id="btnCerrarPreview">Descartar</button>
+                <button class="btn-modal" id="btnDescargar">⬇ Descargar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ficha informativa desplegable -->
     <section id="panelInferior">
-        <div class="barra-arrastre"></div>
         <div class="cabecera-ficha">
             <div>
                 <span class="badge-categoria" id="uiCategoria"></span>
                 <h1 class="titulo-obra" id="uiTitulo"></h1>
             </div>
-            <button class="boton-detalles" id="btnToggleInfo">VER FICHA</button>
+            <button class="boton-cerrar-ficha" id="btnCerrarFicha">CERRAR</button>
         </div>
 
-        <div id="contenidoExpandible">
-            <div class="datos-grid">
-                <div>
-                    <span class="etiqueta">AUTOR</span>
-                    <div class="valor" id="uiAutor"></div>
-                </div>
-                <div>
-                    <span class="etiqueta">AÑO</span>
-                    <div class="valor" id="uiAnio"></div>
-                </div>
-                <div style="grid-column: span 2;">
-                    <span class="etiqueta">UBICACIÓN</span>
-                    <div class="valor" id="uiUbicacion"></div>
-                    <a id="botonMapa" href="#" target="_blank" rel="noopener noreferrer">
-                        VER UBICACIÓN EN GOOGLE MAPS
-                    </a>
-                </div>
+        <div class="datos-grid">
+            <div>
+                <span class="etiqueta">AUTOR</span>
+                <div class="valor" id="uiAutor"></div>
             </div>
-            <span class="etiqueta">INFORMACIÓN DE LA OBRA</span>
-            <p class="historia-texto" id="uiHistoria"></p>
+            <div>
+                <span class="etiqueta">AÑO</span>
+                <div class="valor" id="uiAnio"></div>
+            </div>
+            <div style="grid-column: span 2;">
+                <span class="etiqueta">UBICACIÓN</span>
+                <div class="valor" id="uiUbicacion"></div>
+                <a id="botonMapa" href="#" target="_blank" rel="noopener noreferrer">
+                    VER UBICACIÓN EN GOOGLE MAPS
+                </a>
+            </div>
         </div>
+        <span class="etiqueta">DESCRIPCIÓN</span>
+        <p class="historia-texto" id="uiHistoria"></p>
     </section>
 
     <!-- ===================================================== -->
-    <!-- ESCENA AR E ILUMINACIÓN TRIDIMENSIONAL                -->
+    <!-- ESCENA AR                                             -->
     <!-- ===================================================== -->
     <a-scene
         id="escenaAR"
+        compositor-ar
         mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 0.001;"
         color-space="sRGB"
-        renderer="colorManagement: true, antialias: true, alpha: true"
+        renderer="colorManagement: true, antialias: true, alpha: true, preserveDrawingBuffer: true"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
-        <!-- Sistema de iluminación para que las texturas se vean nítidas y con volumen -->
         <a-light type="ambient" color="#ffffff" intensity="1.6"></a-light>
         <a-light type="directional" color="#ffffff" intensity="2.2" position="1.5 2.5 2"></a-light>
         <a-light type="directional" color="#ffdcb4" intensity="1.0" position="-1.5 -1 1"></a-light>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <!-- Ancla que sigue a la imagen física -->
         <a-entity mindar-image-target="targetIndex: 0" id="objetivoAR">
             <a-entity
                 id="entidadModelo"
@@ -477,11 +747,11 @@
     </a-scene>
 
     <!-- ===================================================== -->
-    <!-- LÓGICA DE INTERFAZ Y EVENTOS                          -->
+    <!-- LÓGICA DE INTERFAZ, FOTO Y GRABACIÓN DE VIDEO         -->
     <!-- ===================================================== -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            // Poblar datos de la ficha
+            // 1. Cargar textos de la ficha
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
@@ -500,29 +770,195 @@
                 botonMapa.style.display = "block";
             }
 
-            // Botón para desplegar/ocultar detalles de la ficha
-            const btnToggleInfo = document.getElementById("btnToggleInfo");
-            const contenidoExpandible = document.getElementById("contenidoExpandible");
-            btnToggleInfo.addEventListener("click", () => {
-                const abierto = contenidoExpandible.classList.toggle("abierto");
-                btnToggleInfo.textContent = abierto ? "CERRAR" : "VER FICHA";
+            // 2. Control de la Ficha Informativa
+            const panelInferior = document.getElementById("panelInferior");
+            const btnAbrirFicha = document.getElementById("btnAbrirFicha");
+            const btnCerrarFicha = document.getElementById("btnCerrarFicha");
+
+            btnAbrirFicha.addEventListener("click", () => {
+                panelInferior.classList.add("visible");
             });
 
-            // Eventos de detección de imagen para la UI
+            btnCerrarFicha.addEventListener("click", () => {
+                panelInferior.classList.remove("visible");
+            });
+
+            // 3. Eventos de detección de imagen
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
-            const panelInferior = document.getElementById("panelInferior");
 
             objetivoAR.addEventListener("targetFound", () => {
                 uiEscaneo.style.opacity = "0";
-                panelInferior.classList.add("visible");
+                btnAbrirFicha.style.display = "block";
             });
 
             objetivoAR.addEventListener("targetLost", () => {
                 uiEscaneo.style.opacity = "1";
                 panelInferior.classList.remove("visible");
-                contenidoExpandible.classList.remove("abierto");
-                btnToggleInfo.textContent = "VER FICHA";
+            });
+
+            // 4. Sistema de Captura de Foto y Video Ligero
+            const btnFoto = document.getElementById("btnFoto");
+            const btnVideo = document.getElementById("btnVideo");
+            const textoBtnVideo = document.getElementById("textoBtnVideo");
+            const flashPantalla = document.getElementById("flashPantalla");
+
+            let mediaRecorder = null;
+            let fragmentosVideo = [];
+            let intervaloTiempo = null;
+            let segundosGrabados = 0;
+            let urlArchivoActual = null;
+            let nombreArchivoActual = "";
+
+            // Tomar Foto
+            btnFoto.addEventListener("click", () => {
+                flashPantalla.style.opacity = "0.85";
+                setTimeout(() => { flashPantalla.style.opacity = "0"; }, 180);
+                window.capturadorAR.solicitarFoto = true;
+            });
+
+            // Determinar el formato de video más compatible y ligero
+            function obtenerMimeTypeOptimizado() {
+                const tipos = [
+                    "video/mp4;codecs=avc1.42E01E",
+                    "video/mp4",
+                    "video/webm;codecs=vp9",
+                    "video/webm;codecs=vp8",
+                    "video/webm"
+                ];
+                for (const t of tipos) {
+                    if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) {
+                        return t;
+                    }
+                }
+                return "";
+            }
+
+            // Iniciar / Detener Grabación de Video
+            btnVideo.addEventListener("click", () => {
+                if (!window.capturadorAR.grabandoVideo) {
+                    iniciarGrabacion();
+                } else {
+                    detenerGrabacion();
+                }
+            });
+
+            function iniciarGrabacion() {
+                window.capturadorAR.grabandoVideo = true;
+                fragmentosVideo = [];
+
+                // Forzar un primer frame en el canvas compuesto antes de abrir el stream
+                const escena = document.getElementById("escenaAR");
+                if (escena && escena.components["compositor-ar"]) {
+                    escena.components["compositor-ar"].tock();
+                }
+
+                const stream = window.capturadorAR.canvasCompuesto.captureStream(24);
+                const mimeType = obtenerMimeTypeOptimizado();
+
+                const opciones = {
+                    videoBitsPerSecond: window.ficha.bitrateVideo || 1200000
+                };
+                if (mimeType) opciones.mimeType = mimeType;
+
+                try {
+                    mediaRecorder = new MediaRecorder(stream, opciones);
+                } catch (e) {
+                    mediaRecorder = new MediaRecorder(stream);
+                }
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) {
+                        fragmentosVideo.push(e.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const tipoFinal = mediaRecorder.mimeType || "video/webm";
+                    const blob = new Blob(fragmentosVideo, { type: tipoFinal });
+                    window.mostrarVistaPreviaArchivo(blob, "video");
+                };
+
+                mediaRecorder.start(200);
+                btnVideo.classList.add("grabando");
+                segundosGrabados = 0;
+                textoBtnVideo.textContent = "00:00";
+
+                intervaloTiempo = setInterval(() => {
+                    segundosGrabados++;
+                    const min = String(Math.floor(segundosGrabados / 60)).padStart(2, "0");
+                    const seg = String(segundosGrabados % 60).padStart(2, "0");
+                    textoBtnVideo.textContent = `${min}:${seg}`;
+                }, 1000);
+            }
+
+            function detenerGrabacion() {
+                window.capturadorAR.grabandoVideo = false;
+                clearInterval(intervaloTiempo);
+                btnVideo.classList.remove("grabando");
+                textoBtnVideo.textContent = "Grabar";
+
+                if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                    mediaRecorder.stop();
+                }
+            }
+
+            // 5. Vista previa y descarga del archivo optimizado
+            const modalPreview = document.getElementById("modalPreview");
+            const contenedorMedia = document.getElementById("contenedorMedia");
+            const pesoArchivo = document.getElementById("pesoArchivo");
+            const tituloPreview = document.getElementById("tituloPreview");
+            const btnCerrarPreview = document.getElementById("btnCerrarPreview");
+            const btnDescargar = document.getElementById("btnDescargar");
+
+            window.mostrarVistaPreviaArchivo = (blob, tipo) => {
+                if (urlArchivoActual) URL.revokeObjectURLURL(urlArchivoActual);
+                urlArchivoActual = URL.createObjectURL(blob);
+                contenedorMedia.innerHTML = "";
+
+                // Calcular peso en KB o MB para mostrar la optimización
+                const kb = blob.size / 1024;
+                pesoArchivo.textContent = kb < 1024
+                    ? `${Math.round(kb)} KB (Optimizado)`
+                    : `${(kb / 1024).toFixed(2)} MB (Optimizado)`;
+
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+
+                if (tipo === "foto") {
+                    tituloPreview.textContent = "Fotografía AR";
+                    nombreArchivoActual = `captura-ar-${timestamp}.jpg`;
+                    const img = document.createElement("img");
+                    img.src = urlArchivoActual;
+                    contenedorMedia.appendChild(img);
+                } else {
+                    tituloPreview.textContent = "Video AR";
+                    const ext = (blob.type && blob.type.includes("mp4")) ? "mp4" : "webm";
+                    nombreArchivoActual = `video-ar-${timestamp}.${ext}`;
+                    const vid = document.createElement("video");
+                    vid.src = urlArchivoActual;
+                    vid.controls = true;
+                    vid.autoplay = true;
+                    vid.loop = true;
+                    vid.playsInline = true;
+                    contenedorMedia.appendChild(vid);
+                }
+
+                modalPreview.classList.add("activo");
+            };
+
+            btnCerrarPreview.addEventListener("click", () => {
+                modalPreview.classList.remove("activo");
+                contenedorMedia.innerHTML = "";
+            });
+
+            btnDescargar.addEventListener("click", () => {
+                if (!urlArchivoActual) return;
+                const a = document.createElement("a");
+                a.href = urlArchivoActual;
+                a.download = nombreArchivoActual;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
             });
         });
     </script>
