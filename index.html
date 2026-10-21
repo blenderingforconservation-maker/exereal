@@ -18,13 +18,13 @@
             marcadorMind: "./targets/imagen_rastreo.mind",
 
             // Ajustes visuales del modelo sobre la imagen
-            escala: 1.2,               // Tamaño relativo sobre la imagen
-            rotacionInicial: "0 0 0",  // Cambia a "90 0 0" si el modelo aparece acostado
+            escala: 1.2,
+            rotacionInicial: "0 0 0",
 
             // Parámetros de optimización de archivos descargados
-            calidadFotoJPEG: 0.82,     // 0.82 = excelente calidad visual con ~80% menos peso
-            resolucionMaxPx: 960,      // Límite de píxeles en el lado mayor para ahorrar peso
-            bitrateVideo: 1200000,     // 1.2 Mbps (~150 KB por segundo de grabación)
+            calidadFotoJPEG: 0.82,     // Compresión ligera JPEG
+            resolucionMaxPx: 960,      // Resolución máxima optimizada
+            bitrateVideo: 1200000,     // ~150 KB por segundo de video
 
             // Datos de la Ficha Informativa (UI)
             categoria: "EXPERIENCIA INTERACTIVA",
@@ -33,8 +33,32 @@
             anio: "2026",
             ubicacion: "Realidad Aumentada Web",
             mapa: "",
-            historia: "Pieza tridimensional animada desplegada mediante reconocimiento óptico de imagen. Usa los botones en pantalla para capturar fotografías o grabar video en formato ligero."
+            historia: "Pieza tridimensional animada desplegada mediante reconocimiento óptico de imagen."
         };
+
+        // =====================================================
+        // CONTROLADOR DE CÁMARA: FORZAR CÁMARA TRASERA AL INICIO
+        // =====================================================
+        window.modoCamaraActual = "environment"; // 'environment' = trasera, 'user' = frontal
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const getUserMediaOriginal = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+            navigator.mediaDevices.getUserMedia = function (constraints) {
+                if (constraints && constraints.video) {
+                    const videoBase = typeof constraints.video === "object" ? constraints.video : {};
+                    constraints = {
+                        ...constraints,
+                        video: {
+                            ...videoBase,
+                            facingMode: { ideal: window.modoCamaraActual },
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    };
+                }
+                return getUserMediaOriginal(constraints);
+            };
+        }
     </script>
 
     <!-- ===================================================== -->
@@ -61,7 +85,7 @@
         }
 
         /* ================================================= */
-        /* BARRA SUPERIOR (SOLO ESTADO Y BOTÓN DE FICHA)     */
+        /* BARRA SUPERIOR MINIMALISTA                        */
         /* ================================================= */
         .top-bar {
             position: fixed;
@@ -72,16 +96,16 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 16px;
+            padding: 16px;
             pointer-events: none;
         }
 
         #estadoCarga {
             font-size: 11px;
             color: #ffffff;
-            background: rgba(20, 20, 20, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 7px 13px;
+            background: rgba(20, 20, 20, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 7px 14px;
             border-radius: 20px;
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
@@ -90,16 +114,18 @@
         #btnAbrirFicha {
             pointer-events: auto;
             display: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             background: rgba(255, 255, 255, 0.9);
             color: #111111;
             border: none;
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+            font-size: 16px;
+            font-weight: 800;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
             cursor: pointer;
+            align-items: center;
+            justify-content: center;
         }
 
         /* ================================================= */
@@ -121,14 +147,14 @@
         }
 
         .marco-escaner {
-            width: 65vw;
-            max-width: 250px;
-            height: 65vw;
-            max-height: 250px;
+            width: 64vw;
+            max-width: 240px;
+            height: 64vw;
+            max-height: 240px;
             border: 2px dashed rgba(255, 255, 255, 0.75);
-            border-radius: 20px;
+            border-radius: 24px;
             position: relative;
-            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.38);
+            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.35);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -143,8 +169,8 @@
         }
 
         @keyframes barrido {
-            0%, 100% { transform: translateY(-85px); opacity: 0.3; }
-            50% { transform: translateY(85px); opacity: 1; }
+            0%, 100% { transform: translateY(-80px); opacity: 0.3; }
+            50% { transform: translateY(80px); opacity: 1; }
         }
 
         .instruccion-ar {
@@ -160,70 +186,143 @@
         }
 
         /* ================================================= */
-        /* CONTROLES DE FOTO Y VIDEO                         */
+        /* CONTROLES UX/UI SIN TEXTO (FOTO, VIDEO, CÁMARA)   */
         /* ================================================= */
-        .dock-captura {
+        .contenedor-controles {
             position: fixed;
-            bottom: 26px;
+            bottom: 28px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 280;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 14px;
-            background: rgba(20, 20, 20, 0.75);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            padding: 10px 18px;
-            border-radius: 40px;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+            gap: 12px;
         }
 
-        .btn-captura {
+        /* Indicador flotante de tiempo de grabación */
+        #badgeTiempo {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 59, 48, 0.92);
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
+        }
+
+        #badgeTiempo.activo {
+            display: flex;
+        }
+
+        .punto-parpadeo {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #ffffff;
+            animation: parpadeo 1s infinite;
+        }
+
+        @keyframes parpadeo {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .dock-captura {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 22px;
+            background: rgba(18, 18, 18, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            padding: 12px 22px;
+            border-radius: 50px;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        }
+
+        .btn-icono {
+            position: relative;
             border: none;
-            border-radius: 30px;
-            padding: 11px 18px;
-            font-size: 13px;
-            font-weight: 700;
+            background: none;
+            padding: 0;
             cursor: pointer;
-            transition: transform 0.15s ease, background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        .btn-captura:active {
-            transform: scale(0.94);
+        .btn-icono:active {
+            transform: scale(0.88);
         }
 
+        /* Botón Foto (Obturador blanco con ícono de cámara sutil) */
         #btnFoto {
-            background-color: #ffffff;
-            color: #111111;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            background: rgba(255, 255, 255, 0.15);
         }
 
+        .nucleo-foto {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #111111;
+            transition: transform 0.15s ease;
+        }
+
+        /* Botón Video (Anillo blanco con núcleo rojo que pasa a Stop) */
         #btnVideo {
-            background-color: #ff3b30;
-            color: #ffffff;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            background: rgba(255, 59, 48, 0.15);
+        }
+
+        .nucleo-video {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ff3b30;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         #btnVideo.grabando {
-            background-color: #ffffff;
-            color: #ff3b30;
-            animation: latido 1.2s infinite;
+            border-color: #ff3b30;
         }
 
-        @keyframes latido {
-            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7); }
-            50% { box-shadow: 0 0 0 10px rgba(255, 59, 48, 0); }
+        #btnVideo.grabando .nucleo-video {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            background: #ff3b30;
         }
 
-        .punto-rec {
-            width: 10px;
-            height: 10px;
+        /* Botón Cambiar Cámara */
+        #btnCambiarCamara {
+            width: 46px;
+            height: 46px;
             border-radius: 50%;
-            background-color: currentColor;
-            display: inline-block;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+            transition: transform 0.4s ease, background-color 0.2s ease;
+        }
+
+        #btnCambiarCamara.girando {
+            transform: rotate(180deg);
         }
 
         /* Efecto flash al tomar foto */
@@ -241,7 +340,7 @@
         }
 
         /* ================================================= */
-        /* MODAL DE VISTA PREVIA Y DESCARGA LIGERA           */
+        /* MODAL DE VISTA PREVIA Y GUARDADO                  */
         /* ================================================= */
         #modalPreview {
             position: fixed;
@@ -249,14 +348,15 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.86);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             z-index: 600;
             display: none;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 18px;
         }
 
         #modalPreview.activo {
@@ -265,12 +365,13 @@
 
         .tarjeta-preview {
             background: #1c1c1e;
-            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 22px;
             padding: 16px;
             width: 100%;
             max-width: 380px;
             color: #ffffff;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
             text-align: center;
         }
 
@@ -280,12 +381,14 @@
             align-items: center;
             margin-bottom: 12px;
             font-size: 13px;
-            color: #aeaeb2;
+            font-weight: 600;
+            color: #e5e5ea;
         }
 
         #pesoArchivo {
-            background: #2c2c2e;
+            background: rgba(48, 209, 88, 0.15);
             color: #30d158;
+            border: 1px solid rgba(48, 209, 88, 0.3);
             padding: 4px 10px;
             border-radius: 12px;
             font-weight: 700;
@@ -294,10 +397,10 @@
 
         .contenedor-media {
             width: 100%;
-            max-height: 58vh;
-            border-radius: 12px;
+            max-height: 55vh;
+            border-radius: 14px;
             overflow: hidden;
-            background: #000;
+            background: #000000;
             margin-bottom: 14px;
             display: flex;
             justify-content: center;
@@ -307,29 +410,40 @@
         .contenedor-media img,
         .contenedor-media video {
             max-width: 100%;
-            max-height: 58vh;
+            max-height: 55vh;
             object-fit: contain;
             display: block;
         }
 
         .acciones-preview {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         .btn-modal {
             flex: 1;
-            padding: 13px;
+            padding: 12px 10px;
             border: none;
             border-radius: 12px;
             font-size: 13px;
             font-weight: 700;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
 
         #btnCerrarPreview {
             background: #2c2c2e;
             color: #ffffff;
+            flex: 0.7;
+        }
+
+        #btnCompartir {
+            display: none;
+            background: #30d158;
+            color: #000000;
         }
 
         #btnDescargar {
@@ -451,7 +565,6 @@
     <!-- 3. COMPONENTES 3D Y COMPOSITOR DE FOTO/VIDEO          -->
     <!-- ===================================================== -->
     <script>
-        // Estado global del capturador
         window.capturadorAR = {
             solicitarFoto: false,
             grabandoVideo: false,
@@ -459,66 +572,74 @@
             ctxCompuesto: null
         };
 
-        // Componente que fusiona el video de la cámara + el modelo 3D en cada frame
+        // Compositor que une cámara + 3D en tiempo real
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
                 const canvas = document.createElement('canvas');
+                canvas.width = 720;
+                canvas.height = 960;
                 window.capturadorAR.canvasCompuesto = canvas;
                 window.capturadorAR.ctxCompuesto = canvas.getContext('2d', { alpha: false });
             },
 
-            // tock() se ejecuta inmediatamente después de que A-Frame dibuja el modelo 3D
             tock: function () {
                 if (!window.capturadorAR.solicitarFoto && !window.capturadorAR.grabandoVideo) return;
+                this.dibujarFrame();
+            },
 
+            dibujarFrame: function () {
                 const glCanvas = this.el.canvas;
                 const video = document.querySelector('video');
                 if (!glCanvas) return;
 
-                const vw = window.innerWidth;
-                const vh = window.innerHeight;
+                const vw = window.innerWidth || 720;
+                const vh = window.innerHeight || 960;
                 const maxDim = window.ficha.resolucionMaxPx || 960;
                 const escala = Math.min(1, maxDim / Math.max(vw, vh));
 
-                // Asegurar dimensiones pares para codificadores de video
-                const outW = Math.round((vw * escala) / 2) * 2;
-                const outH = Math.round((vh * escala) / 2) * 2;
+                const outW = Math.max(2, Math.round((vw * escala) / 2) * 2);
+                const outH = Math.max(2, Math.round((vh * escala) / 2) * 2);
 
                 const compCanvas = window.capturadorAR.canvasCompuesto;
                 const ctx = window.capturadorAR.ctxCompuesto;
 
-                if (compCanvas.width !== outW || compCanvas.height !== outH) {
+                if (!window.capturadorAR.grabandoVideo && (compCanvas.width !== outW || compCanvas.height !== outH)) {
                     compCanvas.width = outW;
                     compCanvas.height = outH;
                 }
 
-                // 1. Fondo negro base
-                ctx.fillStyle = '#000000';
-                ctx.fillRect(0, 0, outW, outH);
+                const W = compCanvas.width;
+                const H = compCanvas.height;
 
-                // 2. Dibujar el feed de la cámara respetando su proporción en pantalla
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, W, H);
+
                 if (video && video.readyState >= 2) {
                     const vRect = video.getBoundingClientRect();
+                    ctx.save();
+                    if (window.modoCamaraActual === "user") {
+                        ctx.translate(W, 0);
+                        ctx.scale(-1, 1);
+                    }
                     ctx.drawImage(
                         video,
-                        (vRect.left / vw) * outW,
-                        (vRect.top / vh) * outH,
-                        (vRect.width / vw) * outW,
-                        (vRect.height / vh) * outH
+                        (vRect.left / vw) * W,
+                        (vRect.top / vh) * H,
+                        (vRect.width / vw) * W,
+                        (vRect.height / vh) * H
                     );
+                    ctx.restore();
                 }
 
-                // 3. Superponer el modelo 3D animado
                 const cRect = glCanvas.getBoundingClientRect();
                 ctx.drawImage(
                     glCanvas,
-                    (cRect.left / vw) * outW,
-                    (cRect.top / vh) * outH,
-                    (cRect.width / vw) * outW,
-                    (cRect.height / vh) * outH
+                    (cRect.left / vw) * W,
+                    (cRect.top / vh) * H,
+                    (cRect.width / vw) * W,
+                    (cRect.height / vh) * H
                 );
 
-                // Si se pidió una foto, comprimir en JPEG ligero
                 if (window.capturadorAR.solicitarFoto) {
                     window.capturadorAR.solicitarFoto = false;
                     compCanvas.toBlob((blob) => {
@@ -530,7 +651,7 @@
             }
         });
 
-        // Componente de carga y animación del archivo GLB con soporte Meshopt
+        // Cargador GLB con soporte Meshopt y animación
         AFRAME.registerComponent('modelo-animado-ar', {
             init: function () {
                 this.mixer = null;
@@ -583,11 +704,10 @@
                                     action.setLoop(AFRAME.THREE.LoopRepeat, Infinity);
                                     this.actions.push(action);
                                 });
-                                estadoUI.textContent = "✓ Listo para escanear";
                             } else {
                                 this.giroRespaldo = true;
-                                estadoUI.textContent = "✓ Listo para escanear";
                             }
+                            estadoUI.textContent = "✓ Listo para escanear";
                         },
                         undefined,
                         (error) => {
@@ -641,13 +761,13 @@
 
 <body>
 
-    <!-- Efecto de flash para fotografía -->
+    <!-- Flash para captura fotográfica -->
     <div id="flashPantalla"></div>
 
-    <!-- Barra superior limpia (sin título fijo) -->
+    <!-- Barra superior -->
     <div class="top-bar">
-        <div id="estadoCarga">Cargando experiencia...</div>
-        <button id="btnAbrirFicha">ℹ️ VER FICHA</button>
+        <div id="estadoCarga">Iniciando cámara...</div>
+        <button id="btnAbrirFicha" aria-label="Información de la pieza">i</button>
     </div>
 
     <!-- Guía de escaneo -->
@@ -660,18 +780,40 @@
         </div>
     </div>
 
-    <!-- Barra flotante para tomar foto o grabar video -->
-    <div class="dock-captura">
-        <button class="btn-captura" id="btnFoto">
-            📷 Foto
-        </button>
-        <button class="btn-captura" id="btnVideo">
-            <span class="punto-rec"></span>
-            <span id="textoBtnVideo">Grabar</span>
-        </button>
+    <!-- Controles inferiores UX/UI (Solo íconos, sin texto) -->
+    <div class="contenedor-controles">
+        <div id="badgeTiempo">
+            <span class="punto-parpadeo"></span>
+            <span id="textoTiempo">00:00</span>
+        </div>
+
+        <div class="dock-captura">
+            <!-- Botón Foto -->
+            <button class="btn-icono" id="btnFoto" aria-label="Tomar foto">
+                <div class="nucleo-foto">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </div>
+            </button>
+
+            <!-- Botón Video -->
+            <button class="btn-icono" id="btnVideo" aria-label="Grabar video">
+                <div class="nucleo-video"></div>
+            </button>
+
+            <!-- Botón Intercalar Cámara Frontal / Trasera -->
+            <button class="btn-icono" id="btnCambiarCamara" aria-label="Cambiar cámara">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"></path>
+                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
+                </svg>
+            </button>
+        </div>
     </div>
 
-    <!-- Modal de vista previa y descarga optimizada -->
+    <!-- Modal de vista previa y guardado de Foto/Video -->
     <div id="modalPreview">
         <div class="tarjeta-preview">
             <div class="cabecera-preview">
@@ -680,7 +822,8 @@
             </div>
             <div class="contenedor-media" id="contenedorMedia"></div>
             <div class="acciones-preview">
-                <button class="btn-modal" id="btnCerrarPreview">Descartar</button>
+                <button class="btn-modal" id="btnCerrarPreview">✕</button>
+                <button class="btn-modal" id="btnCompartir">Guardar</button>
                 <button class="btn-modal" id="btnDescargar">⬇ Descargar</button>
             </div>
         </div>
@@ -747,11 +890,11 @@
     </a-scene>
 
     <!-- ===================================================== -->
-    <!-- LÓGICA DE INTERFAZ, FOTO Y GRABACIÓN DE VIDEO         -->
+    <!-- LÓGICA DE INTERFAZ, CAMBIO DE CÁMARA Y GRABACIÓN      -->
     <!-- ===================================================== -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            // 1. Cargar textos de la ficha
+            // 1. Cargar datos de la ficha
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
@@ -775,13 +918,8 @@
             const btnAbrirFicha = document.getElementById("btnAbrirFicha");
             const btnCerrarFicha = document.getElementById("btnCerrarFicha");
 
-            btnAbrirFicha.addEventListener("click", () => {
-                panelInferior.classList.add("visible");
-            });
-
-            btnCerrarFicha.addEventListener("click", () => {
-                panelInferior.classList.remove("visible");
-            });
+            btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
+            btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
             // 3. Eventos de detección de imagen
             const objetivoAR = document.getElementById("objetivoAR");
@@ -789,7 +927,7 @@
 
             objetivoAR.addEventListener("targetFound", () => {
                 uiEscaneo.style.opacity = "0";
-                btnAbrirFicha.style.display = "block";
+                btnAbrirFicha.style.display = "flex";
             });
 
             objetivoAR.addEventListener("targetLost", () => {
@@ -797,10 +935,38 @@
                 panelInferior.classList.remove("visible");
             });
 
-            // 4. Sistema de Captura de Foto y Video Ligero
+            // 4. Botón para Intercalar entre Cámara Trasera y Frontal
+            const btnCambiarCamara = document.getElementById("btnCambiarCamara");
+            const escenaEl = document.getElementById("escenaAR");
+
+            btnCambiarCamara.addEventListener("click", async () => {
+                btnCambiarCamara.classList.toggle("girando");
+                window.modoCamaraActual = (window.modoCamaraActual === "environment") ? "user" : "environment";
+
+                const mindarSystem = escenaEl.systems["mindar-image-system"];
+                if (mindarSystem && typeof mindarSystem.switchCamera === "function") {
+                    mindarSystem.switchCamera();
+                } else {
+                    // Respaldo directo sobre el elemento <video> si el sistema está ocupado
+                    const videoEl = document.querySelector("video");
+                    if (videoEl && videoEl.srcObject) {
+                        videoEl.srcObject.getTracks().forEach(t => t.stop());
+                        try {
+                            const nuevoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                            videoEl.srcObject = nuevoStream;
+                            await videoEl.play();
+                        } catch (err) {
+                            console.error("Error al cambiar de cámara:", err);
+                        }
+                    }
+                }
+            });
+
+            // 5. Captura de Foto y Grabación de Video Optimizado
             const btnFoto = document.getElementById("btnFoto");
             const btnVideo = document.getElementById("btnVideo");
-            const textoBtnVideo = document.getElementById("textoBtnVideo");
+            const badgeTiempo = document.getElementById("badgeTiempo");
+            const textoTiempo = document.getElementById("textoTiempo");
             const flashPantalla = document.getElementById("flashPantalla");
 
             let mediaRecorder = null;
@@ -808,16 +974,17 @@
             let intervaloTiempo = null;
             let segundosGrabados = 0;
             let urlArchivoActual = null;
+            let archivoActualObj = null;
             let nombreArchivoActual = "";
 
-            // Tomar Foto
+            // Acción Foto
             btnFoto.addEventListener("click", () => {
                 flashPantalla.style.opacity = "0.85";
                 setTimeout(() => { flashPantalla.style.opacity = "0"; }, 180);
                 window.capturadorAR.solicitarFoto = true;
             });
 
-            // Determinar el formato de video más compatible y ligero
+            // Selección de códec compatible
             function obtenerMimeTypeOptimizado() {
                 const tipos = [
                     "video/mp4;codecs=avc1.42E01E",
@@ -826,15 +993,14 @@
                     "video/webm;codecs=vp8",
                     "video/webm"
                 ];
+                if (!window.MediaRecorder) return "";
                 for (const t of tipos) {
-                    if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) {
-                        return t;
-                    }
+                    if (MediaRecorder.isTypeSupported(t)) return t;
                 }
                 return "";
             }
 
-            // Iniciar / Detener Grabación de Video
+            // Acción Video
             btnVideo.addEventListener("click", () => {
                 if (!window.capturadorAR.grabandoVideo) {
                     iniciarGrabacion();
@@ -844,16 +1010,16 @@
             });
 
             function iniciarGrabacion() {
+                const comp = escenaEl.components["compositor-ar"];
+                if (comp) {
+                    window.capturadorAR.solicitarFoto = false;
+                    comp.dibujarFrame();
+                }
+
                 window.capturadorAR.grabandoVideo = true;
                 fragmentosVideo = [];
 
-                // Forzar un primer frame en el canvas compuesto antes de abrir el stream
-                const escena = document.getElementById("escenaAR");
-                if (escena && escena.components["compositor-ar"]) {
-                    escena.components["compositor-ar"].tock();
-                }
-
-                const stream = window.capturadorAR.canvasCompuesto.captureStream(24);
+                const canvasStream = window.capturadorAR.canvasCompuesto.captureStream(24);
                 const mimeType = obtenerMimeTypeOptimizado();
 
                 const opciones = {
@@ -862,9 +1028,9 @@
                 if (mimeType) opciones.mimeType = mimeType;
 
                 try {
-                    mediaRecorder = new MediaRecorder(stream, opciones);
+                    mediaRecorder = new MediaRecorder(canvasStream, opciones);
                 } catch (e) {
-                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder = new MediaRecorder(canvasStream);
                 }
 
                 mediaRecorder.ondataavailable = (e) => {
@@ -874,21 +1040,24 @@
                 };
 
                 mediaRecorder.onstop = () => {
-                    const tipoFinal = mediaRecorder.mimeType || "video/webm";
+                    const tipoFinal = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : "video/mp4";
                     const blob = new Blob(fragmentosVideo, { type: tipoFinal });
-                    window.mostrarVistaPreviaArchivo(blob, "video");
+                    if (blob.size > 0) {
+                        window.mostrarVistaPreviaArchivo(blob, "video");
+                    }
                 };
 
-                mediaRecorder.start(200);
+                mediaRecorder.start(250);
                 btnVideo.classList.add("grabando");
+                badgeTiempo.classList.add("activo");
                 segundosGrabados = 0;
-                textoBtnVideo.textContent = "00:00";
+                textoTiempo.textContent = "00:00";
 
                 intervaloTiempo = setInterval(() => {
                     segundosGrabados++;
                     const min = String(Math.floor(segundosGrabados / 60)).padStart(2, "0");
                     const seg = String(segundosGrabados % 60).padStart(2, "0");
-                    textoBtnVideo.textContent = `${min}:${seg}`;
+                    textoTiempo.textContent = `${min}:${seg}`;
                 }, 1000);
             }
 
@@ -896,51 +1065,75 @@
                 window.capturadorAR.grabandoVideo = false;
                 clearInterval(intervaloTiempo);
                 btnVideo.classList.remove("grabando");
-                textoBtnVideo.textContent = "Grabar";
+                badgeTiempo.classList.remove("activo");
 
                 if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                    mediaRecorder.stop();
+                    try {
+                        mediaRecorder.requestData();
+                    } catch (e) {}
+                    setTimeout(() => {
+                        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                            mediaRecorder.stop();
+                        }
+                    }, 120);
                 }
             }
 
-            // 5. Vista previa y descarga del archivo optimizado
+            // 6. Modal de Vista Previa, Guardado en Galería y Descarga
             const modalPreview = document.getElementById("modalPreview");
             const contenedorMedia = document.getElementById("contenedorMedia");
             const pesoArchivo = document.getElementById("pesoArchivo");
             const tituloPreview = document.getElementById("tituloPreview");
             const btnCerrarPreview = document.getElementById("btnCerrarPreview");
+            const btnCompartir = document.getElementById("btnCompartir");
             const btnDescargar = document.getElementById("btnDescargar");
 
             window.mostrarVistaPreviaArchivo = (blob, tipo) => {
-                if (urlArchivoActual) URL.revokeObjectURLURL(urlArchivoActual);
+                if (urlArchivoActual) {
+                    try { URL.revokeObjectURL(urlArchivoActual); } catch (e) {}
+                }
+
                 urlArchivoActual = URL.createObjectURL(blob);
                 contenedorMedia.innerHTML = "";
 
-                // Calcular peso en KB o MB para mostrar la optimización
                 const kb = blob.size / 1024;
                 pesoArchivo.textContent = kb < 1024
-                    ? `${Math.round(kb)} KB (Optimizado)`
-                    : `${(kb / 1024).toFixed(2)} MB (Optimizado)`;
+                    ? `${Math.max(1, Math.round(kb))} KB`
+                    : `${(kb / 1024).toFixed(2)} MB`;
 
                 const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
 
                 if (tipo === "foto") {
                     tituloPreview.textContent = "Fotografía AR";
-                    nombreArchivoActual = `captura-ar-${timestamp}.jpg`;
+                    nombreArchivoActual = `foto-ar-${timestamp}.jpg`;
+                    archivoActualObj = new File([blob], nombreArchivoActual, { type: "image/jpeg" });
+
                     const img = document.createElement("img");
                     img.src = urlArchivoActual;
                     contenedorMedia.appendChild(img);
                 } else {
                     tituloPreview.textContent = "Video AR";
-                    const ext = (blob.type && blob.type.includes("mp4")) ? "mp4" : "webm";
+                    const esMp4 = blob.type && blob.type.includes("mp4");
+                    const ext = esMp4 ? "mp4" : "webm";
+                    const mimeLimpio = esMp4 ? "video/mp4" : "video/webm";
                     nombreArchivoActual = `video-ar-${timestamp}.${ext}`;
+                    archivoActualObj = new File([blob], nombreArchivoActual, { type: mimeLimpio });
+
                     const vid = document.createElement("video");
                     vid.src = urlArchivoActual;
                     vid.controls = true;
                     vid.autoplay = true;
                     vid.loop = true;
+                    vid.muted = true;
                     vid.playsInline = true;
                     contenedorMedia.appendChild(vid);
+                }
+
+                // Activar botón nativo "Guardar" si el móvil soporta Web Share API para archivos
+                if (navigator.canShare && archivoActualObj && navigator.canShare({ files: [archivoActualObj] })) {
+                    btnCompartir.style.display = "flex";
+                } else {
+                    btnCompartir.style.display = "none";
                 }
 
                 modalPreview.classList.add("activo");
@@ -951,14 +1144,27 @@
                 contenedorMedia.innerHTML = "";
             });
 
+            btnCompartir.addEventListener("click", async () => {
+                if (!archivoActualObj) return;
+                try {
+                    await navigator.share({
+                        files: [archivoActualObj],
+                        title: window.ficha.titulo
+                    });
+                } catch (e) {
+                    console.log("Compartir cancelado:", e);
+                }
+            });
+
             btnDescargar.addEventListener("click", () => {
                 if (!urlArchivoActual) return;
                 const a = document.createElement("a");
+                a.style.display = "none";
                 a.href = urlArchivoActual;
                 a.download = nombreArchivoActual;
                 document.body.appendChild(a);
                 a.click();
-                document.body.removeChild(a);
+                setTimeout(() => document.body.removeChild(a), 200);
             });
         });
     </script>
