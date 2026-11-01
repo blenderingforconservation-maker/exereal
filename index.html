@@ -24,7 +24,7 @@
             // Parámetros de optimización de archivos descargados
             calidadFotoJPEG: 0.82,     // Compresión ligera JPEG
             resolucionMaxPx: 960,      // Resolución máxima optimizada
-            bitrateVideo: 1200000,     // ~150 KB por segundo de video
+            bitrateVideo: 8000000,     // ~1 MB por segundo de video (alta calidad)
 
             // Datos de la Ficha Informativa (UI)
             categoria: "EXPERIENCIA INTERACTIVA",
@@ -1019,11 +1019,11 @@
                 window.capturadorAR.grabandoVideo = true;
                 fragmentosVideo = [];
 
-                const canvasStream = window.capturadorAR.canvasCompuesto.captureStream(24);
+                const canvasStream = window.capturadorAR.canvasCompuesto.captureStream(30);
                 const mimeType = obtenerMimeTypeOptimizado();
 
                 const opciones = {
-                    videoBitsPerSecond: window.ficha.bitrateVideo || 1200000
+                    videoBitsPerSecond: window.ficha.bitrateVideo || 8000000
                 };
                 if (mimeType) opciones.mimeType = mimeType;
 
