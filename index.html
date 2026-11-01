@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
     <title>Experiencia AR - Tori Mask</title>
 
     <!-- ===================================================== -->
@@ -11,36 +12,35 @@
     <!-- ===================================================== -->
     <script>
         window.ficha = {
-            // Ruta del modelo en tu repositorio
             modelo: "./models/giro-torimask-opt.glb",
-
-            // Ruta del archivo compilado de la imagen a detectar
             marcadorMind: "./targets/imagen_rastreo.mind",
 
-            // Ajustes visuales del modelo sobre la imagen
-            escala: 1.6,
+            escala: 1.2,
             rotacionInicial: "0 0 0",
 
-            // Parámetros de captura de ALTA CALIDAD (4K)
-            calidadFotoJPEG: 0.95,        // JPEG con muy poca compresión
-            resolucionMaxPx: 3840,        // FOTOS a 4K
-            resolucionVideoMaxPx: 3840,   // VIDEO a 4K
-            bitrateVideo: 50000000,       // 50 Mbps (~6 MB/s) - calidad máxima para redes
+            // ===== Captura de alta calidad =====
+            calidadFotoJPEG: 0.95,
+            resolucionMaxPx: 3840,        // 4K para fotos
+            resolucionVideoMaxPx: 3840,   // 4K nominal para video
+            bitrateVideo: 35000000,       // 35 Mbps: máxima nitidez práctica a 4K
+            maxDuracionVideoSeg: 60,      // auto-stop a 60s (protección de memoria)
 
-            // Datos de la Ficha Informativa (UI)
-            categoria: "Stickers AR",
-            titulo: "Máscara de Diablo",
-            autor: "As Teroidae",
+            // ===== Cámara: balance entre nitidez y velocidad de detección =====
+            // 1080p es lo máximo que MindAR procesa con fluidez en móviles.
+            // El composite sigue siendo 4K (upscaling), pero el modelo 3D se
+            // renderiza nativo a alta densidad de píxeles, así que se ve nítido.
+            camara: { width: 1920, height: 1080 },
+
+            categoria: "EXPERIENCIA INTERACTIVA",
+            titulo: "TORI MASK",
+            autor: "Colección Digital",
             anio: "2026",
-            ubicacion: "Ranchuis Potono",
+            ubicacion: "Realidad Aumentada Web",
             mapa: "",
-            historia: ""
+            historia: "Pieza tridimensional animada desplegada mediante reconocimiento óptico de imagen."
         };
 
-        // =====================================================
-        // CONTROLADOR DE CÁMARA: FORZAR CÁMARA TRASERA AL INICIO
-        // =====================================================
-        window.modoCamaraActual = "environment"; // 'environment' = trasera, 'user' = frontal
+        window.modoCamaraActual = "environment";
 
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const getUserMediaOriginal = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
@@ -52,8 +52,8 @@
                         video: {
                             ...videoBase,
                             facingMode: { ideal: window.modoCamaraActual },
-                            width: { ideal: 3840 },   // 4K ideal
-                            height: { ideal: 2160 }
+                            width: { ideal: window.ficha.camara.width },
+                            height: { ideal: window.ficha.camara.height }
                         }
                     };
                 }
@@ -98,6 +98,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px;
+            padding-top: max(16px, env(safe-area-inset-top));
             pointer-events: none;
         }
 
@@ -110,6 +111,7 @@
             border-radius: 20px;
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
+            transition: opacity 0.4s ease;
         }
 
         #btnAbrirFicha {
@@ -127,7 +129,9 @@
             cursor: pointer;
             align-items: center;
             justify-content: center;
+            transition: transform 0.2s ease;
         }
+        #btnAbrirFicha:active { transform: scale(0.9); }
 
         /* ================================================= */
         /* GUÍA DE ESCANEO                                   */
@@ -159,6 +163,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .marco-escaner.detectado {
+            border-color: rgba(48, 209, 88, 0.95);
+            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.35), 0 0 32px rgba(48, 209, 88, 0.7);
+            border-style: solid;
         }
 
         .linea-escaner {
@@ -167,6 +178,28 @@
             background: #ffffff;
             box-shadow: 0 0 12px #ffffff;
             animation: barrido 2.2s infinite ease-in-out;
+            transition: opacity 0.25s ease;
+        }
+
+        .marco-escaner.detectado .linea-escaner {
+            opacity: 0;
+            animation-play-state: paused;
+        }
+
+        .check-detectado {
+            position: absolute;
+            font-size: 64px;
+            font-weight: 800;
+            color: #30d158;
+            opacity: 0;
+            transform: scale(0.4);
+            transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-shadow: 0 0 24px rgba(48, 209, 88, 0.6);
+        }
+
+        .marco-escaner.detectado .check-detectado {
+            opacity: 1;
+            transform: scale(1);
         }
 
         @keyframes barrido {
@@ -184,6 +217,12 @@
             text-align: center;
             max-width: 82%;
             backdrop-filter: blur(6px);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .instruccion-ar.detectado {
+            background: rgba(48, 209, 88, 0.9);
+            color: #ffffff;
         }
 
         /* ================================================= */
@@ -192,6 +231,7 @@
         .contenedor-controles {
             position: fixed;
             bottom: 28px;
+            bottom: max(28px, env(safe-area-inset-bottom));
             left: 50%;
             transform: translateX(-50%);
             z-index: 280;
@@ -201,7 +241,6 @@
             gap: 12px;
         }
 
-        /* Indicador flotante de tiempo de grabación */
         #badgeTiempo {
             display: none;
             align-items: center;
@@ -216,9 +255,7 @@
             box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
         }
 
-        #badgeTiempo.activo {
-            display: flex;
-        }
+        #badgeTiempo.activo { display: flex; }
 
         .punto-parpadeo {
             width: 7px;
@@ -255,14 +292,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            touch-action: manipulation;
             transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        .btn-icono:active {
-            transform: scale(0.88);
-        }
+        .btn-icono:active { transform: scale(0.88); }
 
-        /* Botón Foto (Obturador blanco con ícono de cámara sutil) */
         #btnFoto {
             width: 56px;
             height: 56px;
@@ -280,10 +315,8 @@
             align-items: center;
             justify-content: center;
             color: #111111;
-            transition: transform 0.15s ease;
         }
 
-        /* Botón Video (Anillo blanco con núcleo rojo que pasa a Stop) */
         #btnVideo {
             width: 56px;
             height: 56px;
@@ -300,18 +333,13 @@
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        #btnVideo.grabando {
-            border-color: #ff3b30;
-        }
-
+        #btnVideo.grabando { border-color: #ff3b30; }
         #btnVideo.grabando .nucleo-video {
             width: 22px;
             height: 22px;
             border-radius: 6px;
-            background: #ff3b30;
         }
 
-        /* Botón Cambiar Cámara */
         #btnCambiarCamara {
             width: 46px;
             height: 46px;
@@ -319,14 +347,10 @@
             background: rgba(255, 255, 255, 0.14);
             border: 1px solid rgba(255, 255, 255, 0.25);
             color: #ffffff;
-            transition: transform 0.4s ease, background-color 0.2s ease;
+            transition: transform 0.4s ease;
         }
+        #btnCambiarCamara.girando { transform: rotate(180deg); }
 
-        #btnCambiarCamara.girando {
-            transform: rotate(180deg);
-        }
-
-        /* Efecto flash al tomar foto */
         #flashPantalla {
             position: fixed;
             top: 0;
@@ -360,9 +384,7 @@
             padding: 18px;
         }
 
-        #modalPreview.activo {
-            display: flex;
-        }
+        #modalPreview.activo { display: flex; }
 
         .tarjeta-preview {
             background: #1c1c1e;
@@ -433,24 +455,12 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
+            touch-action: manipulation;
         }
 
-        #btnCerrarPreview {
-            background: #2c2c2e;
-            color: #ffffff;
-            flex: 0.7;
-        }
-
-        #btnCompartir {
-            display: none;
-            background: #30d158;
-            color: #000000;
-        }
-
-        #btnDescargar {
-            background: #0a84ff;
-            color: #ffffff;
-        }
+        #btnCerrarPreview { background: #2c2c2e; color: #ffffff; flex: 0.7; }
+        #btnCompartir { display: none; background: #30d158; color: #000000; }
+        #btnDescargar { background: #0a84ff; color: #ffffff; }
 
         /* ================================================= */
         /* PANEL DE FICHA INFORMATIVA                        */
@@ -472,9 +482,7 @@
             overflow-y: auto;
         }
 
-        #panelInferior.visible {
-            transform: translate(-50%, 0%);
-        }
+        #panelInferior.visible { transform: translate(-50%, 0%); }
 
         .cabecera-ficha {
             display: flex;
@@ -573,7 +581,12 @@
             ctxCompuesto: null
         };
 
-        // Compositor que une cámara + 3D en tiempo real
+        // =====================================================
+        // COMPOSITOR OPTIMIZADO
+        // - Caché de rects (evita layout thrashing a 60fps)
+        // - Throttle a 30fps durante grabación
+        // - Auto-resize solo cuando captura foto
+        // =====================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
                 const canvas = document.createElement('canvas');
@@ -581,33 +594,65 @@
                 canvas.height = 960;
                 window.capturadorAR.canvasCompuesto = canvas;
                 window.capturadorAR.ctxCompuesto = canvas.getContext('2d', { alpha: false });
+
+                this._lastDrawTime = 0;
+                this._rects = null;
             },
 
-            tock: function () {
+            invalidarRects: function () {
+                this._rects = null;
+            },
+
+            _medirRects: function () {
+                const video = document.querySelector('video');
+                const glCanvas = this.el.canvas;
+                if (!glCanvas) return null;
+
+                const vw = window.innerWidth || 720;
+                const vh = window.innerHeight || 960;
+
+                const vRect = (video && video.readyState >= 2)
+                    ? video.getBoundingClientRect()
+                    : { left: 0, top: 0, width: vw, height: vh };
+
+                const cRect = glCanvas.getBoundingClientRect();
+
+                this._rects = { video, glCanvas, vRect, cRect, vw, vh };
+                return this._rects;
+            },
+
+            tock: function (time) {
                 if (!window.capturadorAR.solicitarFoto && !window.capturadorAR.grabandoVideo) return;
+
+                // Durante video, throttle a ~30fps (alineado con captureStream(30))
+                if (window.capturadorAR.grabandoVideo) {
+                    if (time - this._lastDrawTime < 33) return;
+                    this._lastDrawTime = time;
+                }
+
                 this.dibujarFrame();
             },
 
             dibujarFrame: function () {
-                const glCanvas = this.el.canvas;
-                const video = document.querySelector('video');
-                if (!glCanvas) return;
-
-                const vw = window.innerWidth || 720;
-                const vh = window.innerHeight || 960;
-                const maxDim = window.ficha.resolucionMaxPx || 960;
-                // Sin cap: permite upscaling para alcanzar 4K en FOTOS
-                const escala = maxDim / Math.max(vw, vh);
-
-                const outW = Math.max(2, Math.round((vw * escala) / 2) * 2);
-                const outH = Math.max(2, Math.round((vh * escala) / 2) * 2);
-
                 const compCanvas = window.capturadorAR.canvasCompuesto;
                 const ctx = window.capturadorAR.ctxCompuesto;
+                if (!compCanvas || !ctx) return;
 
-                if (!window.capturadorAR.grabandoVideo && (compCanvas.width !== outW || compCanvas.height !== outH)) {
-                    compCanvas.width = outW;
-                    compCanvas.height = outH;
+                const r = this._rects || this._medirRects();
+                if (!r || !r.glCanvas) return;
+
+                const { video, glCanvas, vRect, cRect, vw, vh } = r;
+
+                // Auto-resize SOLO en captura de foto (video ya redimensiona externamente)
+                if (!window.capturadorAR.grabandoVideo) {
+                    const maxDim = window.ficha.resolucionMaxPx || 3840;
+                    const escala = maxDim / Math.max(vw, vh);
+                    const outW = Math.max(2, Math.round((vw * escala) / 2) * 2);
+                    const outH = Math.max(2, Math.round((vh * escala) / 2) * 2);
+                    if (compCanvas.width !== outW || compCanvas.height !== outH) {
+                        compCanvas.width = outW;
+                        compCanvas.height = outH;
+                    }
                 }
 
                 const W = compCanvas.width;
@@ -617,7 +662,6 @@
                 ctx.fillRect(0, 0, W, H);
 
                 if (video && video.readyState >= 2) {
-                    const vRect = video.getBoundingClientRect();
                     ctx.save();
                     if (window.modoCamaraActual === "user") {
                         ctx.translate(W, 0);
@@ -633,7 +677,6 @@
                     ctx.restore();
                 }
 
-                const cRect = glCanvas.getBoundingClientRect();
                 ctx.drawImage(
                     glCanvas,
                     (cRect.left / vw) * W,
@@ -653,7 +696,9 @@
             }
         });
 
-        // Cargador GLB con soporte Meshopt y animación
+        // =====================================================
+        // CARGADOR DE MODELO CON ANIMACIÓN ESTABLE
+        // =====================================================
         AFRAME.registerComponent('modelo-animado-ar', {
             init: function () {
                 this.mixer = null;
@@ -750,7 +795,8 @@
 
             tick: function (time, timeDelta) {
                 if (!this.activo) return;
-                const delta = timeDelta / 1000;
+                // Cap delta a 50ms: evita saltos si un frame tardó mucho
+                const delta = Math.min(timeDelta / 1000, 0.05);
                 if (this.mixer) {
                     this.mixer.update(delta);
                 } else if (this.giroRespaldo && this.contenedor) {
@@ -774,15 +820,16 @@
 
     <!-- Guía de escaneo -->
     <div id="ui-escaneo">
-        <div class="marco-escaner">
+        <div class="marco-escaner" id="marcoEscaner">
             <div class="linea-escaner"></div>
+            <div class="check-detectado">✓</div>
         </div>
-        <div class="instruccion-ar">
+        <div class="instruccion-ar" id="instruccionAR">
             Apunta la cámara hacia la imagen marcador
         </div>
     </div>
 
-    <!-- Controles inferiores UX/UI (Solo íconos, sin texto) -->
+    <!-- Controles inferiores UX/UI -->
     <div class="contenedor-controles">
         <div id="badgeTiempo">
             <span class="punto-parpadeo"></span>
@@ -790,7 +837,6 @@
         </div>
 
         <div class="dock-captura">
-            <!-- Botón Foto -->
             <button class="btn-icono" id="btnFoto" aria-label="Tomar foto">
                 <div class="nucleo-foto">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -800,12 +846,10 @@
                 </div>
             </button>
 
-            <!-- Botón Video -->
             <button class="btn-icono" id="btnVideo" aria-label="Grabar video">
                 <div class="nucleo-video"></div>
             </button>
 
-            <!-- Botón Intercalar Cámara Frontal / Trasera -->
             <button class="btn-icono" id="btnCambiarCamara" aria-label="Cambiar cámara">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"></path>
@@ -815,7 +859,7 @@
         </div>
     </div>
 
-    <!-- Modal de vista previa y guardado de Foto/Video -->
+    <!-- Modal de vista previa -->
     <div id="modalPreview">
         <div class="tarjeta-preview">
             <div class="cabecera-preview">
@@ -831,7 +875,7 @@
         </div>
     </div>
 
-    <!-- Ficha informativa desplegable -->
+    <!-- Ficha informativa -->
     <section id="panelInferior">
         <div class="cabecera-ficha">
             <div>
@@ -868,9 +912,10 @@
     <a-scene
         id="escenaAR"
         compositor-ar
-        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.0001; filterBeta: 0.001;"
+        loading-screen="enabled: false"
+        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.01; warmupTolerance: 3; missTolerance: 10;"
         color-space="sRGB"
-        renderer="colorManagement: true, antialias: true, alpha: true, preserveDrawingBuffer: true"
+        renderer="colorManagement: true; antialias: true; alpha: true; preserveDrawingBuffer: true; powerPreference: high-performance;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
@@ -896,7 +941,9 @@
     <!-- ===================================================== -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            // ================================================
             // 1. Cargar datos de la ficha
+            // ================================================
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
@@ -915,7 +962,9 @@
                 botonMapa.style.display = "block";
             }
 
+            // ================================================
             // 2. Control de la Ficha Informativa
+            // ================================================
             const panelInferior = document.getElementById("panelInferior");
             const btnAbrirFicha = document.getElementById("btnAbrirFicha");
             const btnCerrarFicha = document.getElementById("btnCerrarFicha");
@@ -923,21 +972,49 @@
             btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
-            // 3. Eventos de detección de imagen
+            // ================================================
+            // 3. Eventos de detección con feedback visual
+            // ================================================
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
+            const marcoEscaner = document.getElementById("marcoEscaner");
+            const instruccionAR = document.getElementById("instruccionAR");
+            const estadoCarga = document.getElementById("estadoCarga");
+
+            let timeoutOcultarUI = null;
 
             objetivoAR.addEventListener("targetFound", () => {
-                uiEscaneo.style.opacity = "0";
+                clearTimeout(timeoutOcultarUI);
+
+                marcoEscaner.classList.add("detectado");
+                instruccionAR.classList.add("detectado");
+                instruccionAR.textContent = "✓ Imagen detectada";
                 btnAbrirFicha.style.display = "flex";
+
+                // Haptic
+                if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+
+                // Ocultar UI de escaneo tras el feedback
+                timeoutOcultarUI = setTimeout(() => {
+                    uiEscaneo.style.opacity = "0";
+                    estadoCarga.style.opacity = "0.5";
+                }, 600);
             });
 
             objetivoAR.addEventListener("targetLost", () => {
+                clearTimeout(timeoutOcultarUI);
                 uiEscaneo.style.opacity = "1";
+                marcoEscaner.classList.remove("detectado");
+                instruccionAR.classList.remove("detectado");
+                instruccionAR.textContent = "Apunta la cámara hacia la imagen marcador";
                 panelInferior.classList.remove("visible");
+                btnAbrirFicha.style.display = "none";
+                estadoCarga.style.opacity = "1";
             });
 
-            // 4. Botón para Intercalar entre Cámara Trasera y Frontal
+            // ================================================
+            // 4. Cambio de cámara frontal/trasera
+            // ================================================
             const btnCambiarCamara = document.getElementById("btnCambiarCamara");
             const escenaEl = document.getElementById("escenaAR");
 
@@ -949,7 +1026,6 @@
                 if (mindarSystem && typeof mindarSystem.switchCamera === "function") {
                     mindarSystem.switchCamera();
                 } else {
-                    // Respaldo directo sobre el elemento <video> si el sistema está ocupado
                     const videoEl = document.querySelector("video");
                     if (videoEl && videoEl.srcObject) {
                         videoEl.srcObject.getTracks().forEach(t => t.stop());
@@ -964,280 +1040,36 @@
                 }
             });
 
-            // ============================================================
-            // HELPERS PARA AUMENTAR LA RESOLUCIÓN DEL RENDERER 3D
-            // ============================================================
-            function getSceneRenderer() {
-                return escenaEl && escenaEl.renderer;
+            // ================================================
+            // 5. Helpers para ajustar la resolución del renderer
+            //    (evita que el modelo se vea borroso al hacer el composite)
+            // ================================================
+            function getSceneRenderer() { return escenaEl && escenaEl.renderer; }
+
+            // Capturamos el pixelRatio original de A-Frame una sola vez
+            let defaultPixelRatio = null;
+            setTimeout(() => {
+                const renderer = getSceneRenderer();
+                if (renderer && typeof renderer.getPixelRatio === "function") {
+                    defaultPixelRatio = renderer.getPixelRatio();
+                }
+            }, 1500);
+
+            function getDefaultPR() {
+                if (defaultPixelRatio !== null) return defaultPixelRatio;
+                return Math.min(window.devicePixelRatio || 1, 2);
             }
 
             function setRenderPixelRatio(pr) {
                 const renderer = getSceneRenderer();
                 if (renderer && typeof renderer.setPixelRatio === "function") {
-                    try {
-                        renderer.setPixelRatio(pr);
-                    } catch (e) {
-                        console.warn("No se pudo ajustar pixelRatio del renderer:", e);
-                    }
+                    try { renderer.setPixelRatio(pr); } catch (e) {}
                 }
             }
 
-            function getDefaultPixelRatio() {
-                return Math.min(window.devicePixelRatio || 1, 2);
-            }
-
-            // Devuelve el pixelRatio necesario para que el canvas WebGL
-            // se renderice a una resolución que iguale (o supere) la del
-            // composite final (4K). Cap 5x por seguridad de rendimiento.
-            function getCapturePixelRatio(targetMaxPx) {
-                const vwCss = Math.max(window.innerWidth, window.innerHeight) || 1;
-                const basePR = window.devicePixelRatio || 1;
-                const needed = (targetMaxPx || 3840) / vwCss;
-                return Math.min(Math.max(needed, basePR), 5);
-            }
-
-            // ============================================================
-            // 5. Captura de Foto y Grabación de Video de ALTA CALIDAD (4K)
-            // ============================================================
-            const btnFoto = document.getElementById("btnFoto");
-            const btnVideo = document.getElementById("btnVideo");
-            const badgeTiempo = document.getElementById("badgeTiempo");
-            const textoTiempo = document.getElementById("textoTiempo");
-            const flashPantalla = document.getElementById("flashPantalla");
-
-            let mediaRecorder = null;
-            let fragmentosVideo = [];
-            let intervaloTiempo = null;
-            let segundosGrabados = 0;
-            let urlArchivoActual = null;
-            let archivoActualObj = null;
-            let nombreArchivoActual = "";
-
-            // Acción Foto (4K + modelo nítido)
-            btnFoto.addEventListener("click", () => {
-                flashPantalla.style.opacity = "0.85";
-                setTimeout(() => { flashPantalla.style.opacity = "0"; }, 180);
-
-                // 1) Aumentar la resolución real del renderer (modelo nítido)
-                setRenderPixelRatio(getCapturePixelRatio(window.ficha.resolucionMaxPx || 3840));
-
-                // 2) Esperar 2 frames a que el renderer efectivamente redimensione su buffer
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        window.capturadorAR.solicitarFoto = true;
-                    });
-                });
-            });
-
-            // Selección de códec compatible
-            function obtenerMimeTypeOptimizado() {
-                const tipos = [
-                    "video/mp4;codecs=avc1.42E01E",
-                    "video/mp4",
-                    "video/webm;codecs=vp9",
-                    "video/webm;codecs=vp8",
-                    "video/webm"
-                ];
-                if (!window.MediaRecorder) return "";
-                for (const t of tipos) {
-                    if (MediaRecorder.isTypeSupported(t)) return t;
-                }
-                return "";
-            }
-
-            // Acción Video
-            btnVideo.addEventListener("click", () => {
-                if (!window.capturadorAR.grabandoVideo) {
-                    iniciarGrabacion();
-                } else {
-                    detenerGrabacion();
-                }
-            });
-
-            function iniciarGrabacion() {
-                // 1) Aumentar la resolución del renderer ANTES de capturar
-                setRenderPixelRatio(getCapturePixelRatio(window.ficha.resolucionVideoMaxPx || 3840));
-
-                // 2) Esperar 2 frames a que el renderer efectivamente redimensione
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(() => {
-                        window.capturadorAR.solicitarFoto = false;
-                        window.capturadorAR.grabandoVideo = true;
-
-                        // Composite a resolución 4K (o hasta 4K según viewport)
-                        const compCanvas = window.capturadorAR.canvasCompuesto;
-                        const videoMax = window.ficha.resolucionVideoMaxPx || 3840;
-                        const vwCss = window.innerWidth || 720;
-                        const vhCss = window.innerHeight || 960;
-                        const escala = videoMax / Math.max(vwCss, vhCss);
-                        compCanvas.width = Math.max(2, Math.round((vwCss * escala) / 2) * 2);
-                        compCanvas.height = Math.max(2, Math.round((vhCss * escala) / 2) * 2);
-
-                        // Dibujar primer frame a la nueva resolución
-                        const comp = escenaEl.components["compositor-ar"];
-                        if (comp) comp.dibujarFrame();
-
-                        fragmentosVideo = [];
-
-                        const canvasStream = compCanvas.captureStream(30);
-                        const mimeType = obtenerMimeTypeOptimizado();
-
-                        const opciones = {
-                            videoBitsPerSecond: window.ficha.bitrateVideo || 50000000
-                        };
-                        if (mimeType) opciones.mimeType = mimeType;
-
-                        try {
-                            mediaRecorder = new MediaRecorder(canvasStream, opciones);
-                        } catch (e) {
-                            mediaRecorder = new MediaRecorder(canvasStream);
-                        }
-
-                        mediaRecorder.ondataavailable = (e) => {
-                            if (e.data && e.data.size > 0) {
-                                fragmentosVideo.push(e.data);
-                            }
-                        };
-
-                        mediaRecorder.onstop = () => {
-                            const tipoFinal = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : "video/mp4";
-                            const blob = new Blob(fragmentosVideo, { type: tipoFinal });
-                            if (blob.size > 0) {
-                                window.mostrarVistaPreviaArchivo(blob, "video");
-                            }
-                        };
-
-                        mediaRecorder.start(250);
-                        btnVideo.classList.add("grabando");
-                        badgeTiempo.classList.add("activo");
-                        segundosGrabados = 0;
-                        textoTiempo.textContent = "00:00";
-
-                        intervaloTiempo = setInterval(() => {
-                            segundosGrabados++;
-                            const min = String(Math.floor(segundosGrabados / 60)).padStart(2, "0");
-                            const seg = String(segundosGrabados % 60).padStart(2, "0");
-                            textoTiempo.textContent = `${min}:${seg}`;
-                        }, 1000);
-                    });
-                });
-            }
-
-            function detenerGrabacion() {
-                window.capturadorAR.grabandoVideo = false;
-                clearInterval(intervaloTiempo);
-                btnVideo.classList.remove("grabando");
-                badgeTiempo.classList.remove("activo");
-
-                // Restaurar resolución del renderer tras terminar la grabación
-                setTimeout(() => {
-                    setRenderPixelRatio(getDefaultPixelRatio());
-                }, 300);
-
-                if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                    try {
-                        mediaRecorder.requestData();
-                    } catch (e) {}
-                    setTimeout(() => {
-                        if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                            mediaRecorder.stop();
-                        }
-                    }, 120);
-                }
-            }
-
-            // 6. Modal de Vista Previa, Guardado en Galería y Descarga
-            const modalPreview = document.getElementById("modalPreview");
-            const contenedorMedia = document.getElementById("contenedorMedia");
-            const pesoArchivo = document.getElementById("pesoArchivo");
-            const tituloPreview = document.getElementById("tituloPreview");
-            const btnCerrarPreview = document.getElementById("btnCerrarPreview");
-            const btnCompartir = document.getElementById("btnCompartir");
-            const btnDescargar = document.getElementById("btnDescargar");
-
-            window.mostrarVistaPreviaArchivo = (blob, tipo) => {
-                if (urlArchivoActual) {
-                    try { URL.revokeObjectURL(urlArchivoActual); } catch (e) {}
-                }
-
-                urlArchivoActual = URL.createObjectURL(blob);
-                contenedorMedia.innerHTML = "";
-
-                const kb = blob.size / 1024;
-                pesoArchivo.textContent = kb < 1024
-                    ? `${Math.max(1, Math.round(kb))} KB`
-                    : `${(kb / 1024).toFixed(2)} MB`;
-
-                const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-
-                if (tipo === "foto") {
-                    tituloPreview.textContent = "Fotografía AR (4K)";
-                    nombreArchivoActual = `foto-ar-${timestamp}.jpg`;
-                    archivoActualObj = new File([blob], nombreArchivoActual, { type: "image/jpeg" });
-
-                    const img = document.createElement("img");
-                    img.src = urlArchivoActual;
-                    contenedorMedia.appendChild(img);
-
-                    // Restaurar resolución del renderer tras captura de foto
-                    try { setRenderPixelRatio(getDefaultPixelRatio()); } catch (e) {}
-                } else {
-                    tituloPreview.textContent = "Video AR (4K)";
-                    const esMp4 = blob.type && blob.type.includes("mp4");
-                    const ext = esMp4 ? "mp4" : "webm";
-                    const mimeLimpio = esMp4 ? "video/mp4" : "video/webm";
-                    nombreArchivoActual = `video-ar-${timestamp}.${ext}`;
-                    archivoActualObj = new File([blob], nombreArchivoActual, { type: mimeLimpio });
-
-                    const vid = document.createElement("video");
-                    vid.src = urlArchivoActual;
-                    vid.controls = true;
-                    vid.autoplay = true;
-                    vid.loop = true;
-                    vid.muted = true;
-                    vid.playsInline = true;
-                    contenedorMedia.appendChild(vid);
-                }
-
-                // Activar botón nativo "Guardar" si el móvil soporta Web Share API para archivos
-                if (navigator.canShare && archivoActualObj && navigator.canShare({ files: [archivoActualObj] })) {
-                    btnCompartir.style.display = "flex";
-                } else {
-                    btnCompartir.style.display = "none";
-                }
-
-                modalPreview.classList.add("activo");
-            };
-
-            btnCerrarPreview.addEventListener("click", () => {
-                modalPreview.classList.remove("activo");
-                contenedorMedia.innerHTML = "";
-            });
-
-            btnCompartir.addEventListener("click", async () => {
-                if (!archivoActualObj) return;
-                try {
-                    await navigator.share({
-                        files: [archivoActualObj],
-                        title: window.ficha.titulo
-                    });
-                } catch (e) {
-                    console.log("Compartir cancelado:", e);
-                }
-            });
-
-            btnDescargar.addEventListener("click", () => {
-                if (!urlArchivoActual) return;
-                const a = document.createElement("a");
-                a.style.display = "none";
-                a.href = urlArchivoActual;
-                a.download = nombreArchivoActual;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => document.body.removeChild(a), 200);
-            });
-        });
-    </script>
-
-</body>
-</html>
+            // PixelRatio necesario para que el canvas WebGL (del modelo 3D)
+            // se renderice a la resolución del composite (4K). Topes distintos:
+            //   - FOTO: 6x (spike de un solo frame, no sostenido)
+            //   - VIDEO: 3x (sostenido durante la grabación, sostenible)
+            function getCapturePixelRatio(targetMaxPx, cap) {
+                const vwCss = Math
