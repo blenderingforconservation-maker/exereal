@@ -22,9 +22,10 @@
             rotacionInicial: "0 0 0",
 
             // Parámetros de optimización de archivos descargados
-            calidadFotoJPEG: 0.82,     // Compresión ligera JPEG
-            resolucionMaxPx: 960,      // Resolución máxima optimizada
-            bitrateVideo: 8000000,     // ~1 MB por segundo de video (alta calidad)
+            calidadFotoJPEG: 0.82,        // Compresión ligera JPEG (fotos sin cambios)
+            resolucionMaxPx: 960,         // Resolución máxima para FOTOS (sin cambios)
+            resolucionVideoMaxPx: 1920,   // Resolución máxima para VIDEO (Full HD)
+            bitrateVideo: 15000000,       // ~1.9 MB por segundo (alta calidad para redes)
 
             // Datos de la Ficha Informativa (UI)
             categoria: "EXPERIENCIA INTERACTIVA",
@@ -51,8 +52,8 @@
                         video: {
                             ...videoBase,
                             facingMode: { ideal: window.modoCamaraActual },
-                            width: { ideal: 1280 },
-                            height: { ideal: 720 }
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 }
                         }
                     };
                 }
@@ -962,7 +963,7 @@
                 }
             });
 
-            // 5. Captura de Foto y Grabación de Video Optimizado
+            // 5. Captura de Foto y Grabación de Video de ALTA CALIDAD
             const btnFoto = document.getElementById("btnFoto");
             const btnVideo = document.getElementById("btnVideo");
             const badgeTiempo = document.getElementById("badgeTiempo");
@@ -977,7 +978,7 @@
             let archivoActualObj = null;
             let nombreArchivoActual = "";
 
-            // Acción Foto
+            // Acción Foto (sin cambios, usa resolucionMaxPx)
             btnFoto.addEventListener("click", () => {
                 flashPantalla.style.opacity = "0.85";
                 setTimeout(() => { flashPantalla.style.opacity = "0"; }, 180);
@@ -1010,20 +1011,34 @@
             });
 
             function iniciarGrabacion() {
+                // Marcar primer el flag para que dibujarFrame no redimensione al tamaño de foto
+                window.capturadorAR.solicitarFoto = false;
+                window.capturadorAR.grabandoVideo = true;
+
+                // ===== RESOLUCIÓN DE ALTA CALIDAD PARA VIDEO (DPR-aware) =====
+                const compCanvas = window.capturadorAR.canvasCompuesto;
+                const dpr = window.devicePixelRatio || 1;
+                const vwFis = (window.innerWidth || 720) * dpr;
+                const vhFis = (window.innerHeight || 960) * dpr;
+                const videoMax = window.ficha.resolucionVideoMaxPx || 1920;
+                const escalaVideo = Math.min(1, videoMax / Math.max(vwFis, vhFis));
+
+                compCanvas.width = Math.max(2, Math.round((vwFis * escalaVideo) / 2) * 2);
+                compCanvas.height = Math.max(2, Math.round((vhFis * escalaVideo) / 2) * 2);
+
+                // Dibujar primer frame a la nueva resolución
                 const comp = escenaEl.components["compositor-ar"];
                 if (comp) {
-                    window.capturadorAR.solicitarFoto = false;
                     comp.dibujarFrame();
                 }
 
-                window.capturadorAR.grabandoVideo = true;
                 fragmentosVideo = [];
 
-                const canvasStream = window.capturadorAR.canvasCompuesto.captureStream(30);
+                const canvasStream = compCanvas.captureStream(30);
                 const mimeType = obtenerMimeTypeOptimizado();
 
                 const opciones = {
-                    videoBitsPerSecond: window.ficha.bitrateVideo || 8000000
+                    videoBitsPerSecond: window.ficha.bitrateVideo || 15000000
                 };
                 if (mimeType) opciones.mimeType = mimeType;
 
