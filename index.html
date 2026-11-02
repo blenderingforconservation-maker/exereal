@@ -8,7 +8,7 @@
     <title>Experiencia AR - Tori Mask</title>
 
     <!-- ===================================================== -->
-    <!-- 1. CONFIGURACIÓN DEL PROYECTO (EDITAR AQUÍ)           -->
+    <!-- 1. CONFIGURACIÓN DEL PROYECTO                         -->
     <!-- ===================================================== -->
     <script>
         window.ficha = {
@@ -18,18 +18,20 @@
             escala: 1.2,
             rotacionInicial: "0 0 0",
 
-            // ===== Captura de alta calidad =====
-            calidadFotoJPEG: 0.95,
-            resolucionMaxPx: 3840,        // 4K para fotos
-            resolucionVideoMaxPx: 3840,   // 4K nominal para video
-            bitrateVideo: 35000000,       // 35 Mbps: máxima nitidez práctica a 4K
-            maxDuracionVideoSeg: 60,      // auto-stop a 60s (protección de memoria)
+            // ===== Calidad de captura =====
+            calidadFotoJPEG: 0.92,        // JPEG con buena calidad (fotos)
+            bitrateVideo: 15000000,       // 15 Mbps → HD social-media sólido
+            fpsVideo: 30,
+            maxDuracionVideoSeg: 60,
 
-            // ===== Cámara: balance entre nitidez y velocidad de detección =====
-            // 1080p es lo máximo que MindAR procesa con fluidez en móviles.
-            // El composite sigue siendo 4K (upscaling), pero el modelo 3D se
-            // renderiza nativo a alta densidad de píxeles, así que se ve nítido.
+            // ===== Cámara de entrada (fuente para MindAR) =====
+            // 1080p es el punto dulce: suficiente nitidez para el composite,
+            // y rápido para el detector MindAR.
             camara: { width: 1920, height: 1080 },
+
+            // ===== Calidad del viewer 3D en vivo =====
+            // 2.5x es el tope seguro para DPR; se ve nítido sin calentar el móvil.
+            viewerPixelRatioMax: 2.5,
 
             categoria: "EXPERIENCIA INTERACTIVA",
             titulo: "TORI MASK",
@@ -63,517 +65,268 @@
     </script>
 
     <!-- ===================================================== -->
-    <!-- 2. LIBRERÍAS GRATUITAS: A-FRAME + MINDAR + MESHOPT    -->
+    <!-- 2. LIBRERÍAS                                          -->
     <!-- ===================================================== -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 
     <style>
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
         body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
+            margin: 0; padding: 0; overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background-color: #000000;
-            color: #222222;
+            background-color: #000000; color: #222222;
         }
 
-        /* ================================================= */
-        /* BARRA SUPERIOR MINIMALISTA                        */
-        /* ================================================= */
+        /* BARRA SUPERIOR */
         .top-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            z-index: 300;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            padding-top: max(16px, env(safe-area-inset-top));
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 300;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px; padding-top: max(16px, env(safe-area-inset-top));
             pointer-events: none;
         }
-
         #estadoCarga {
-            font-size: 11px;
-            color: #ffffff;
-            background: rgba(20, 20, 20, 0.72);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            padding: 7px 14px;
-            border-radius: 20px;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
+            font-size: 11px; color: #ffffff;
+            background: rgba(20,20,20,0.72); border: 1px solid rgba(255,255,255,0.18);
+            padding: 7px 14px; border-radius: 20px;
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
             transition: opacity 0.4s ease;
         }
-
         #btnAbrirFicha {
-            pointer-events: auto;
-            display: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.9);
-            color: #111111;
-            border: none;
-            font-size: 16px;
-            font-weight: 800;
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s ease;
+            pointer-events: auto; display: none; width: 40px; height: 40px;
+            border-radius: 50%; background: rgba(255,255,255,0.9); color: #111;
+            border: none; font-size: 16px; font-weight: 800;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3); cursor: pointer;
+            align-items: center; justify-content: center; transition: transform 0.2s ease;
         }
         #btnAbrirFicha:active { transform: scale(0.9); }
 
-        /* ================================================= */
-        /* GUÍA DE ESCANEO                                   */
-        /* ================================================= */
+        /* GUÍA DE ESCANEO */
         #ui-escaneo {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 150;
-            pointer-events: none;
-            transition: opacity 0.4s ease;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 150; pointer-events: none; transition: opacity 0.4s ease;
         }
-
         .marco-escaner {
-            width: 64vw;
-            max-width: 240px;
-            height: 64vw;
-            max-height: 240px;
-            border: 2px dashed rgba(255, 255, 255, 0.75);
-            border-radius: 24px;
-            position: relative;
-            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.35);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 64vw; max-width: 240px; height: 64vw; max-height: 240px;
+            border: 2px dashed rgba(255,255,255,0.75); border-radius: 24px; position: relative;
+            box-shadow: 0 0 0 4000px rgba(0,0,0,0.35);
+            display: flex; align-items: center; justify-content: center;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
-
         .marco-escaner.detectado {
-            border-color: rgba(48, 209, 88, 0.95);
-            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.35), 0 0 32px rgba(48, 209, 88, 0.7);
-            border-style: solid;
+            border-color: rgba(48,209,88,0.95); border-style: solid;
+            box-shadow: 0 0 0 4000px rgba(0,0,0,0.35), 0 0 32px rgba(48,209,88,0.7);
         }
-
         .linea-escaner {
-            width: 85%;
-            height: 2px;
-            background: #ffffff;
-            box-shadow: 0 0 12px #ffffff;
-            animation: barrido 2.2s infinite ease-in-out;
+            width: 85%; height: 2px; background: #ffffff;
+            box-shadow: 0 0 12px #ffffff; animation: barrido 2.2s infinite ease-in-out;
             transition: opacity 0.25s ease;
         }
-
-        .marco-escaner.detectado .linea-escaner {
-            opacity: 0;
-            animation-play-state: paused;
-        }
-
+        .marco-escaner.detectado .linea-escaner { opacity: 0; animation-play-state: paused; }
         .check-detectado {
-            position: absolute;
-            font-size: 64px;
-            font-weight: 800;
-            color: #30d158;
-            opacity: 0;
-            transform: scale(0.4);
-            transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            text-shadow: 0 0 24px rgba(48, 209, 88, 0.6);
+            position: absolute; font-size: 64px; font-weight: 800; color: #30d158;
+            opacity: 0; transform: scale(0.4);
+            transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            text-shadow: 0 0 24px rgba(48,209,88,0.6);
         }
-
-        .marco-escaner.detectado .check-detectado {
-            opacity: 1;
-            transform: scale(1);
-        }
-
+        .marco-escaner.detectado .check-detectado { opacity: 1; transform: scale(1); }
         @keyframes barrido {
             0%, 100% { transform: translateY(-80px); opacity: 0.3; }
             50% { transform: translateY(80px); opacity: 1; }
         }
-
         .instruccion-ar {
-            margin-top: 22px;
-            background: rgba(20, 20, 20, 0.82);
-            color: #f2f0eb;
-            padding: 10px 18px;
-            border-radius: 30px;
-            font-size: 13px;
-            text-align: center;
-            max-width: 82%;
-            backdrop-filter: blur(6px);
+            margin-top: 22px; background: rgba(20,20,20,0.82); color: #f2f0eb;
+            padding: 10px 18px; border-radius: 30px; font-size: 13px;
+            text-align: center; max-width: 82%; backdrop-filter: blur(6px);
             transition: background-color 0.3s ease, color 0.3s ease;
         }
+        .instruccion-ar.detectado { background: rgba(48,209,88,0.9); color: #ffffff; }
 
-        .instruccion-ar.detectado {
-            background: rgba(48, 209, 88, 0.9);
-            color: #ffffff;
-        }
-
-        /* ================================================= */
-        /* CONTROLES UX/UI SIN TEXTO (FOTO, VIDEO, CÁMARA)   */
-        /* ================================================= */
+        /* CONTROLES */
         .contenedor-controles {
-            position: fixed;
-            bottom: 28px;
-            bottom: max(28px, env(safe-area-inset-bottom));
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 280;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
+            position: fixed; bottom: 28px; bottom: max(28px, env(safe-area-inset-bottom));
+            left: 50%; transform: translateX(-50%); z-index: 280;
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
         }
-
         #badgeTiempo {
-            display: none;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255, 59, 48, 0.92);
-            color: #ffffff;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            padding: 5px 12px;
-            border-radius: 20px;
-            box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
+            display: none; align-items: center; gap: 6px;
+            background: rgba(255,59,48,0.92); color: #ffffff;
+            font-size: 12px; font-weight: 700; letter-spacing: 1px;
+            padding: 5px 12px; border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(255,59,48,0.4);
         }
-
         #badgeTiempo.activo { display: flex; }
-
         .punto-parpadeo {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #ffffff;
+            width: 7px; height: 7px; border-radius: 50%; background: #ffffff;
             animation: parpadeo 1s infinite;
         }
-
-        @keyframes parpadeo {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.2; }
-        }
+        @keyframes parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
         .dock-captura {
-            display: flex;
-            align-items: center;
-            gap: 22px;
-            background: rgba(18, 18, 18, 0.72);
-            border: 1px solid rgba(255, 255, 255, 0.16);
-            padding: 12px 22px;
-            border-radius: 50px;
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+            display: flex; align-items: center; gap: 22px;
+            background: rgba(18,18,18,0.72); border: 1px solid rgba(255,255,255,0.16);
+            padding: 12px 22px; border-radius: 50px;
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.45);
         }
-
         .btn-icono {
-            position: relative;
-            border: none;
-            background: none;
-            padding: 0;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: relative; border: none; background: none; padding: 0;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
             touch-action: manipulation;
-            transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: transform 0.18s cubic-bezier(0.2,0.8,0.2,1);
         }
-
         .btn-icono:active { transform: scale(0.88); }
 
         #btnFoto {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            border: 3px solid #ffffff;
-            background: rgba(255, 255, 255, 0.15);
+            width: 56px; height: 56px; border-radius: 50%;
+            border: 3px solid #ffffff; background: rgba(255,255,255,0.15);
         }
-
         .nucleo-foto {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #111111;
+            width: 44px; height: 44px; border-radius: 50%; background: #ffffff;
+            display: flex; align-items: center; justify-content: center; color: #111111;
         }
-
         #btnVideo {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            border: 3px solid #ffffff;
-            background: rgba(255, 59, 48, 0.15);
+            width: 56px; height: 56px; border-radius: 50%;
+            border: 3px solid #ffffff; background: rgba(255,59,48,0.15);
         }
-
         .nucleo-video {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #ff3b30;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 40px; height: 40px; border-radius: 50%; background: #ff3b30;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
         }
-
         #btnVideo.grabando { border-color: #ff3b30; }
         #btnVideo.grabando .nucleo-video {
-            width: 22px;
-            height: 22px;
-            border-radius: 6px;
+            width: 22px; height: 22px; border-radius: 6px;
         }
-
         #btnCambiarCamara {
-            width: 46px;
-            height: 46px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.14);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            color: #ffffff;
-            transition: transform 0.4s ease;
+            width: 46px; height: 46px; border-radius: 50%;
+            background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.25);
+            color: #ffffff; transition: transform 0.4s ease;
         }
         #btnCambiarCamara.girando { transform: rotate(180deg); }
+        #btnCambiarCamara[disabled] { opacity: 0.4; cursor: wait; }
 
         #flashPantalla {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #ffffff;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 500;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #ffffff; opacity: 0; pointer-events: none; z-index: 500;
             transition: opacity 0.25s ease;
         }
 
-        /* ================================================= */
-        /* MODAL DE VISTA PREVIA Y GUARDADO                  */
-        /* ================================================= */
+        /* MODAL */
         #modalPreview {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.86);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            z-index: 600;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.86); backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px); z-index: 600;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
             padding: 18px;
         }
-
         #modalPreview.activo { display: flex; }
-
         .tarjeta-preview {
-            background: #1c1c1e;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 22px;
-            padding: 16px;
-            width: 100%;
-            max-width: 380px;
-            color: #ffffff;
-            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
-            text-align: center;
+            background: #1c1c1e; border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 22px; padding: 16px; width: 100%; max-width: 380px;
+            color: #ffffff; box-shadow: 0 14px 40px rgba(0,0,0,0.6); text-align: center;
         }
-
         .cabecera-preview {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #e5e5ea;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px; font-size: 13px; font-weight: 600; color: #e5e5ea;
         }
-
         #pesoArchivo {
-            background: rgba(48, 209, 88, 0.15);
-            color: #30d158;
-            border: 1px solid rgba(48, 209, 88, 0.3);
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 11px;
+            background: rgba(48,209,88,0.15); color: #30d158;
+            border: 1px solid rgba(48,209,88,0.3); padding: 4px 10px;
+            border-radius: 12px; font-weight: 700; font-size: 11px;
         }
-
         .contenedor-media {
-            width: 100%;
-            max-height: 55vh;
-            border-radius: 14px;
-            overflow: hidden;
-            background: #000000;
-            margin-bottom: 14px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            width: 100%; max-height: 55vh; border-radius: 14px; overflow: hidden;
+            background: #000000; margin-bottom: 14px;
+            display: flex; justify-content: center; align-items: center;
         }
-
-        .contenedor-media img,
-        .contenedor-media video {
-            max-width: 100%;
-            max-height: 55vh;
-            object-fit: contain;
-            display: block;
+        .contenedor-media img, .contenedor-media video {
+            max-width: 100%; max-height: 55vh; object-fit: contain; display: block;
         }
-
-        .acciones-preview {
-            display: flex;
-            gap: 8px;
-        }
-
+        .acciones-preview { display: flex; gap: 8px; }
         .btn-modal {
-            flex: 1;
-            padding: 12px 10px;
-            border: none;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
+            flex: 1; padding: 12px 10px; border: none; border-radius: 12px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
             touch-action: manipulation;
         }
-
         #btnCerrarPreview { background: #2c2c2e; color: #ffffff; flex: 0.7; }
         #btnCompartir { display: none; background: #30d158; color: #000000; }
         #btnDescargar { background: #0a84ff; color: #ffffff; }
 
-        /* ================================================= */
-        /* PANEL DE FICHA INFORMATIVA                        */
-        /* ================================================= */
+        /* FICHA */
         #panelInferior {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translate(-50%, 110%);
-            width: 100%;
-            max-width: 600px;
-            background-color: #f2f0eb;
-            border-radius: 22px 22px 0 0;
-            padding: 20px 24px 28px 24px;
-            z-index: 400;
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.45);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            max-height: 80vh;
-            overflow-y: auto;
+            position: fixed; bottom: 0; left: 50%; transform: translate(-50%, 110%);
+            width: 100%; max-width: 600px; background-color: #f2f0eb;
+            border-radius: 22px 22px 0 0; padding: 20px 24px 28px 24px;
+            z-index: 400; box-shadow: 0 -8px 30px rgba(0,0,0,0.45);
+            transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
+            max-height: 80vh; overflow-y: auto;
         }
-
         #panelInferior.visible { transform: translate(-50%, 0%); }
-
         .cabecera-ficha {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px;
-            margin-bottom: 14px;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 12px; margin-bottom: 14px;
         }
-
         .badge-categoria {
-            display: inline-block;
-            font-size: 10px;
-            font-weight: bold;
-            letter-spacing: 1.5px;
-            color: #ffffff;
-            background-color: #202020;
-            padding: 5px 10px;
-            border-radius: 6px;
-            margin-bottom: 6px;
+            display: inline-block; font-size: 10px; font-weight: bold; letter-spacing: 1.5px;
+            color: #ffffff; background-color: #202020; padding: 5px 10px;
+            border-radius: 6px; margin-bottom: 6px;
         }
-
-        .titulo-obra {
-            margin: 0;
-            font-size: 22px;
-            font-weight: 700;
-            color: #202020;
-        }
-
+        .titulo-obra { margin: 0; font-size: 22px; font-weight: 700; color: #202020; }
         .boton-cerrar-ficha {
-            background-color: #202020;
-            color: #ffffff;
-            border: none;
-            border-radius: 8px;
-            padding: 9px 14px;
-            font-size: 12px;
-            font-weight: bold;
-            cursor: pointer;
+            background-color: #202020; color: #ffffff; border: none;
+            border-radius: 8px; padding: 9px 14px; font-size: 12px;
+            font-weight: bold; cursor: pointer;
         }
-
         .datos-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            padding-top: 14px;
-            border-top: 1px solid #dcd9d0;
-            margin-bottom: 14px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+            padding-top: 14px; border-top: 1px solid #dcd9d0; margin-bottom: 14px;
         }
-
         .etiqueta {
-            display: block;
-            font-size: 10px;
-            font-weight: bold;
-            letter-spacing: 1.4px;
-            color: #777777;
-            margin-bottom: 4px;
+            display: block; font-size: 10px; font-weight: bold; letter-spacing: 1.4px;
+            color: #777777; margin-bottom: 4px;
         }
-
-        .valor {
-            font-size: 14px;
-            color: #222222;
-            font-weight: 600;
-        }
-
+        .valor { font-size: 14px; color: #222222; font-weight: 600; }
         .historia-texto {
-            font-size: 14px;
-            line-height: 1.6;
-            color: #444444;
-            margin: 8px 0 0 0;
-            white-space: pre-line;
+            font-size: 14px; line-height: 1.6; color: #444444;
+            margin: 8px 0 0 0; white-space: pre-line;
         }
-
         #botonMapa {
-            display: none;
-            margin-top: 14px;
-            width: 100%;
-            text-align: center;
-            padding: 12px;
-            background-color: #e4e1da;
-            color: #202020;
-            border: 1px solid #cccccc;
-            border-radius: 8px;
-            text-decoration: none;
-            font-size: 12px;
-            font-weight: bold;
+            display: none; margin-top: 14px; width: 100%; text-align: center;
+            padding: 12px; background-color: #e4e1da; color: #202020;
+            border: 1px solid #cccccc; border-radius: 8px;
+            text-decoration: none; font-size: 12px; font-weight: bold;
         }
     </style>
 
     <!-- ===================================================== -->
-    <!-- 3. COMPONENTES 3D Y COMPOSITOR DE FOTO/VIDEO          -->
+    <!-- 3. HELPERS GLOBALES + COMPONENTES 3D                  -->
     <!-- ===================================================== -->
     <script>
+        // ============================================================
+        // Helpers de resolución (foto / video) con aspect-ratio natural
+        // ============================================================
+        function calcularResolucionCaptura(vw, vh, modo) {
+            const minSide = Math.min(vw, vh);
+            // VIDEO: 1080 en el lado corto (HD real) — FOTO: 1440 en el lado corto
+            const escalaBase = (modo === 'video' ? 1080 : 1440) / minSide;
+            const capLong = modo === 'video' ? 2560 : 3840;
+
+            let outW = Math.round((vw * escalaBase) / 2) * 2;
+            let outH = Math.round((vh * escalaBase) / 2) * 2;
+
+            if (Math.max(outW, outH) > capLong) {
+                const s = capLong / Math.max(outW, outH);
+                outW = Math.round((outW * s) / 2) * 2;
+                outH = Math.round((outH * s) / 2) * 2;
+            }
+            return { w: Math.max(2, outW), h: Math.max(2, outH) };
+        }
+
+        // Estado global del capturador
         window.capturadorAR = {
             solicitarFoto: false,
             grabandoVideo: false,
@@ -581,12 +334,12 @@
             ctxCompuesto: null
         };
 
-        // =====================================================
-        // COMPOSITOR OPTIMIZADO
-        // - Caché de rects (evita layout thrashing a 60fps)
-        // - Throttle a 30fps durante grabación
+        // ============================================================
+        // COMPOSITOR: une cámara + 3D
+        // - Caché de rects (evita layout thrashing a 30 fps)
         // - Auto-resize solo cuando captura foto
-        // =====================================================
+        // - Throttle a ~30 fps durante grabación
+        // ============================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
                 const canvas = document.createElement('canvas');
@@ -597,13 +350,16 @@
 
                 this._lastDrawTime = 0;
                 this._rects = null;
+
+                window.addEventListener('resize', () => { this._rects = null; });
+                window.addEventListener('orientationchange', () => { this._rects = null; });
             },
 
-            invalidarRects: function () {
-                this._rects = null;
-            },
+            invalidarRects: function () { this._rects = null; },
 
-            _medirRects: function () {
+            _getRects: function () {
+                if (this._rects) return this._rects;
+
                 const video = document.querySelector('video');
                 const glCanvas = this.el.canvas;
                 if (!glCanvas) return null;
@@ -624,7 +380,6 @@
             tock: function (time) {
                 if (!window.capturadorAR.solicitarFoto && !window.capturadorAR.grabandoVideo) return;
 
-                // Durante video, throttle a ~30fps (alineado con captureStream(30))
                 if (window.capturadorAR.grabandoVideo) {
                     if (time - this._lastDrawTime < 33) return;
                     this._lastDrawTime = time;
@@ -638,20 +393,17 @@
                 const ctx = window.capturadorAR.ctxCompuesto;
                 if (!compCanvas || !ctx) return;
 
-                const r = this._rects || this._medirRects();
+                const r = this._getRects();
                 if (!r || !r.glCanvas) return;
 
                 const { video, glCanvas, vRect, cRect, vw, vh } = r;
 
-                // Auto-resize SOLO en captura de foto (video ya redimensiona externamente)
-                if (!window.capturadorAR.grabandoVideo) {
-                    const maxDim = window.ficha.resolucionMaxPx || 3840;
-                    const escala = maxDim / Math.max(vw, vh);
-                    const outW = Math.max(2, Math.round((vw * escala) / 2) * 2);
-                    const outH = Math.max(2, Math.round((vh * escala) / 2) * 2);
-                    if (compCanvas.width !== outW || compCanvas.height !== outH) {
-                        compCanvas.width = outW;
-                        compCanvas.height = outH;
+                // FOTO: resize on-the-fly aquí. VIDEO: resize externo al iniciar.
+                if (!window.capturadorAR.grabandoVideo && window.capturadorAR.solicitarFoto) {
+                    const target = calcularResolucionCaptura(vw, vh, 'foto');
+                    if (compCanvas.width !== target.w || compCanvas.height !== target.h) {
+                        compCanvas.width = target.w;
+                        compCanvas.height = target.h;
                     }
                 }
 
@@ -691,14 +443,14 @@
                         if (blob && window.mostrarVistaPreviaArchivo) {
                             window.mostrarVistaPreviaArchivo(blob, 'foto');
                         }
-                    }, 'image/jpeg', window.ficha.calidadFotoJPEG || 0.95);
+                    }, 'image/jpeg', window.ficha.calidadFotoJPEG || 0.92);
                 }
             }
         });
 
-        // =====================================================
-        // CARGADOR DE MODELO CON ANIMACIÓN ESTABLE
-        // =====================================================
+        // ============================================================
+        // CARGADOR DE MODELO — con anisotropía para nitidez en ángulo
+        // ============================================================
         AFRAME.registerComponent('modelo-animado-ar', {
             init: function () {
                 this.mixer = null;
@@ -709,16 +461,15 @@
 
                 const el = this.el;
                 const estadoUI = document.getElementById('estadoCarga');
+                const THREE = AFRAME.THREE;
 
                 const cargarGLB = () => {
-                    const loader = new AFRAME.THREE.GLTFLoader();
+                    const loader = new THREE.GLTFLoader();
 
-                    if (window.MeshoptDecoder) {
-                        loader.setMeshoptDecoder(window.MeshoptDecoder);
-                    }
+                    if (window.MeshoptDecoder) loader.setMeshoptDecoder(window.MeshoptDecoder);
 
-                    if (AFRAME.THREE.DRACOLoader) {
-                        const dracoLoader = new AFRAME.THREE.DRACOLoader();
+                    if (THREE.DRACOLoader) {
+                        const dracoLoader = new THREE.DRACOLoader();
                         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
                         loader.setDRACOLoader(dracoLoader);
                     }
@@ -727,12 +478,13 @@
                         window.ficha.modelo,
                         (gltf) => {
                             const model = gltf.scene;
-                            const wrapper = new AFRAME.THREE.Group();
+                            const wrapper = new THREE.Group();
                             wrapper.add(model);
 
-                            const box = new AFRAME.THREE.Box3().setFromObject(model);
-                            const size = box.getSize(new AFRAME.THREE.Vector3());
-                            const center = box.getCenter(new AFRAME.THREE.Vector3());
+                            // Ajustar escala y centrar
+                            const box = new THREE.Box3().setFromObject(model);
+                            const size = box.getSize(new THREE.Vector3());
+                            const center = box.getCenter(new THREE.Vector3());
 
                             const maxDim = Math.max(size.x, size.y, size.z);
                             if (maxDim > 0) {
@@ -741,14 +493,38 @@
                                 model.position.set(-center.x, -center.y, -center.z);
                             }
 
+                            // === Mejoras de nitidez del modelo ===
+                            const aniso = 8;
+                            model.traverse((node) => {
+                                if (node.isMesh) {
+                                    node.frustumCulled = false;
+                                    const mats = Array.isArray(node.material) ? node.material : [node.material];
+                                    mats.forEach((mat) => {
+                                        if (!mat) return;
+                                        if (mat.map) {
+                                            mat.map.anisotropy = aniso;
+                                            mat.map.minFilter = THREE.LinearMipmapLinearFilter;
+                                            mat.map.magFilter = THREE.LinearFilter;
+                                            mat.map.generateMipmaps = true;
+                                            mat.map.needsUpdate = true;
+                                        }
+                                        if (mat.normalMap) {
+                                            mat.normalMap.anisotropy = aniso;
+                                            mat.normalMap.needsUpdate = true;
+                                        }
+                                        mat.needsUpdate = true;
+                                    });
+                                }
+                            });
+
                             el.setObject3D('mesh', wrapper);
                             this.contenedor = wrapper;
 
                             if (gltf.animations && gltf.animations.length > 0) {
-                                this.mixer = new AFRAME.THREE.AnimationMixer(model);
+                                this.mixer = new THREE.AnimationMixer(model);
                                 gltf.animations.forEach((clip) => {
                                     const action = this.mixer.clipAction(clip);
-                                    action.setLoop(AFRAME.THREE.LoopRepeat, Infinity);
+                                    action.setLoop(THREE.LoopRepeat, Infinity);
                                     this.actions.push(action);
                                 });
                             } else {
@@ -776,26 +552,21 @@
                 targetEl.addEventListener('targetFound', () => {
                     this.activo = true;
                     if (this.mixer && this.actions.length > 0) {
-                        this.actions.forEach(action => {
-                            action.reset();
-                            action.play();
-                        });
+                        this.actions.forEach(a => { a.reset(); a.play(); });
                     }
                 });
 
                 targetEl.addEventListener('targetLost', () => {
                     this.activo = false;
                     if (this.mixer && this.actions.length > 0) {
-                        this.actions.forEach(action => {
-                            action.paused = true;
-                        });
+                        this.actions.forEach(a => { a.paused = true; });
                     }
                 });
             },
 
             tick: function (time, timeDelta) {
                 if (!this.activo) return;
-                // Cap delta a 50ms: evita saltos si un frame tardó mucho
+                // Cap delta a 50 ms para evitar saltos si un frame tardó
                 const delta = Math.min(timeDelta / 1000, 0.05);
                 if (this.mixer) {
                     this.mixer.update(delta);
@@ -809,16 +580,13 @@
 
 <body>
 
-    <!-- Flash para captura fotográfica -->
     <div id="flashPantalla"></div>
 
-    <!-- Barra superior -->
     <div class="top-bar">
         <div id="estadoCarga">Iniciando cámara...</div>
         <button id="btnAbrirFicha" aria-label="Información de la pieza">i</button>
     </div>
 
-    <!-- Guía de escaneo -->
     <div id="ui-escaneo">
         <div class="marco-escaner" id="marcoEscaner">
             <div class="linea-escaner"></div>
@@ -829,7 +597,6 @@
         </div>
     </div>
 
-    <!-- Controles inferiores UX/UI -->
     <div class="contenedor-controles">
         <div id="badgeTiempo">
             <span class="punto-parpadeo"></span>
@@ -859,7 +626,6 @@
         </div>
     </div>
 
-    <!-- Modal de vista previa -->
     <div id="modalPreview">
         <div class="tarjeta-preview">
             <div class="cabecera-preview">
@@ -875,7 +641,6 @@
         </div>
     </div>
 
-    <!-- Ficha informativa -->
     <section id="panelInferior">
         <div class="cabecera-ficha">
             <div>
@@ -897,9 +662,7 @@
             <div style="grid-column: span 2;">
                 <span class="etiqueta">UBICACIÓN</span>
                 <div class="valor" id="uiUbicacion"></div>
-                <a id="botonMapa" href="#" target="_blank" rel="noopener noreferrer">
-                    VER UBICACIÓN EN GOOGLE MAPS
-                </a>
+                <a id="botonMapa" href="#" target="_blank" rel="noopener noreferrer">VER UBICACIÓN EN GOOGLE MAPS</a>
             </div>
         </div>
         <span class="etiqueta">DESCRIPCIÓN</span>
@@ -919,9 +682,11 @@
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
-        <a-light type="ambient" color="#ffffff" intensity="1.6"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="2.2" position="1.5 2.5 2"></a-light>
-        <a-light type="directional" color="#ffdcb4" intensity="1.0" position="-1.5 -1 1"></a-light>
+        <!-- Luz mejorada para el viewer 3D -->
+        <a-light type="hemisphere" color="#ffffff" groundColor="#5a5a5a" intensity="0.7"></a-light>
+        <a-light type="ambient" color="#ffffff" intensity="1.0"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="2.0" position="1.5 2.5 2"></a-light>
+        <a-light type="directional" color="#ffdcb4" intensity="0.9" position="-1.5 -1 1"></a-light>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
@@ -937,13 +702,15 @@
     </a-scene>
 
     <!-- ===================================================== -->
-    <!-- LÓGICA DE INTERFAZ, CAMBIO DE CÁMARA Y GRABACIÓN      -->
+    <!-- LÓGICA DE INTERFAZ, CÁMARA Y GRABACIÓN                -->
     <!-- ===================================================== -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            // ================================================
+            const escenaEl = document.getElementById("escenaAR");
+
+            // =========================================================
             // 1. Cargar datos de la ficha
-            // ================================================
+            // =========================================================
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
@@ -962,9 +729,30 @@
                 botonMapa.style.display = "block";
             }
 
-            // ================================================
-            // 2. Control de la Ficha Informativa
-            // ================================================
+            // =========================================================
+            // 2. Viewer: ajustar resolución del renderer (pixelRatio)
+            //    Tan pronto como A-Frame carga, forzamos un PR nítido.
+            // =========================================================
+            function aplicarViewerPixelRatio() {
+                const renderer = escenaEl && escenaEl.renderer;
+                if (!renderer || typeof renderer.setPixelRatio !== 'function') return;
+                const dpr = window.devicePixelRatio || 1;
+                const target = Math.min(dpr, window.ficha.viewerPixelRatioMax || 2.5);
+                const current = (typeof renderer.getPixelRatio === 'function') ? renderer.getPixelRatio() : 1;
+                if (current < target) {
+                    renderer.setPixelRatio(target);
+                }
+            }
+
+            if (escenaEl.hasLoaded) {
+                aplicarViewerPixelRatio();
+            } else {
+                escenaEl.addEventListener('loaded', aplicarViewerPixelRatio);
+            }
+
+            // =========================================================
+            // 3. Ficha informativa
+            // =========================================================
             const panelInferior = document.getElementById("panelInferior");
             const btnAbrirFicha = document.getElementById("btnAbrirFicha");
             const btnCerrarFicha = document.getElementById("btnCerrarFicha");
@@ -972,9 +760,9 @@
             btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
-            // ================================================
-            // 3. Eventos de detección con feedback visual
-            // ================================================
+            // =========================================================
+            // 4. Detección con feedback visual
+            // =========================================================
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
@@ -985,16 +773,12 @@
 
             objetivoAR.addEventListener("targetFound", () => {
                 clearTimeout(timeoutOcultarUI);
-
                 marcoEscaner.classList.add("detectado");
                 instruccionAR.classList.add("detectado");
                 instruccionAR.textContent = "✓ Imagen detectada";
                 btnAbrirFicha.style.display = "flex";
-
-                // Haptic
                 if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
 
-                // Ocultar UI de escaneo tras el feedback
                 timeoutOcultarUI = setTimeout(() => {
                     uiEscaneo.style.opacity = "0";
                     estadoCarga.style.opacity = "0.5";
@@ -1012,64 +796,356 @@
                 estadoCarga.style.opacity = "1";
             });
 
-            // ================================================
-            // 4. Cambio de cámara frontal/trasera
-            // ================================================
+            // =========================================================
+            // 5. CAMBIO DE CÁMARA — robusto con fallback
+            // =========================================================
             const btnCambiarCamara = document.getElementById("btnCambiarCamara");
-            const escenaEl = document.getElementById("escenaAR");
 
-            btnCambiarCamara.addEventListener("click", async () => {
+            // Helper: reinicia el composite para que use rects frescos tras swap
+            function invalidarRectsCompositor() {
+                const comp = escenaEl.components["compositor-ar"];
+                if (comp && typeof comp.invalidarRects === "function") comp.invalidarRects();
+            }
+
+            async function cambiarCamara() {
+                if (window._cambiandoCamara) return;
+                window._cambiandoCamara = true;
+                btnCambiarCamara.disabled = true;
                 btnCambiarCamara.classList.toggle("girando");
-                window.modoCamaraActual = (window.modoCamaraActual === "environment") ? "user" : "environment";
 
-                const mindarSystem = escenaEl.systems["mindar-image-system"];
-                if (mindarSystem && typeof mindarSystem.switchCamera === "function") {
-                    mindarSystem.switchCamera();
-                } else {
-                    const videoEl = document.querySelector("video");
-                    if (videoEl && videoEl.srcObject) {
-                        videoEl.srcObject.getTracks().forEach(t => t.stop());
-                        try {
-                            const nuevoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                            videoEl.srcObject = nuevoStream;
-                            await videoEl.play();
-                        } catch (err) {
-                            console.error("Error al cambiar de cámara:", err);
-                        }
+                const modoPrevio = window.modoCamaraActual;
+                const nuevoModo = modoPrevio === "environment" ? "user" : "environment";
+                window.modoCamaraActual = nuevoModo;
+
+                let ok = false;
+
+                // Intento 1: API oficial de MindAR
+                try {
+                    const mindarSystem = escenaEl.systems["mindar-image-system"];
+                    if (mindarSystem && typeof mindarSystem.switchCamera === "function") {
+                        const r = mindarSystem.switchCamera();
+                        if (r && typeof r.then === "function") await r;
+                        ok = true;
                     }
+                } catch (err) {
+                    console.warn("[camera] switchCamera() falló:", err);
+                }
+
+                // Intento 2: fallback manual (parar tracks + pedir nuevo stream)
+                if (!ok) {
+                    try {
+                        const videos = document.querySelectorAll("video");
+                        videos.forEach(v => {
+                            if (v.srcObject) {
+                                try { v.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {}
+                            }
+                        });
+
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: { ideal: nuevoModo },
+                                width: { ideal: window.ficha.camara.width },
+                                height: { ideal: window.ficha.camara.height }
+                            },
+                            audio: false
+                        });
+
+                        for (const video of videos) {
+                            video.srcObject = stream;
+                            try { await video.play(); } catch (e) {}
+                        }
+                        ok = true;
+                    } catch (err) {
+                        console.error("[camera] fallback getUserMedia falló:", err);
+                    }
+                }
+
+                if (!ok) {
+                    // Revertir estado si no funcionó
+                    window.modoCamaraActual = modoPrevio;
+                    btnCambiarCamara.classList.toggle("girando");
+                } else {
+                    // Recalcular rects del composite (video puede haber cambiado orientación)
+                    invalidarRectsCompositor();
+                    // Pequeño delay para que el nuevo stream se estabilice
+                    setTimeout(invalidarRectsCompositor, 400);
+                }
+
+                btnCambiarCamara.disabled = false;
+                window._cambiandoCamara = false;
+            }
+
+            btnCambiarCamara.addEventListener("click", cambiarCamara);
+
+            // =========================================================
+            // 6. Captura de FOTO
+            // =========================================================
+            const btnFoto = document.getElementById("btnFoto");
+            const flashPantalla = document.getElementById("flashPantalla");
+
+            btnFoto.addEventListener("click", async () => {
+                if (window.capturadorAR.grabandoVideo) return;
+
+                // Flash visual
+                flashPantalla.style.opacity = "0.85";
+                setTimeout(() => { flashPantalla.style.opacity = "0"; }, 180);
+
+                // Boost temporal del renderer para que el modelo esté nítido
+                const renderer = escenaEl.renderer;
+                const originalPR = renderer ? renderer.getPixelRatio() : 1;
+                if (renderer) {
+                    const boost = Math.min((window.devicePixelRatio || 1) * 1.5, 4);
+                    renderer.setPixelRatio(Math.max(originalPR, boost));
+                }
+
+                // Esperar 2 frames para que el canvas WebGL se redimensione
+                await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+                window.capturadorAR.solicitarFoto = true;
+
+                // Restaurar el renderer tras la captura
+                setTimeout(() => {
+                    if (renderer) renderer.setPixelRatio(originalPR);
+                }, 900);
+            });
+
+            // =========================================================
+            // 7. GRABACIÓN DE VIDEO HD
+            // =========================================================
+            const btnVideo = document.getElementById("btnVideo");
+            const badgeTiempo = document.getElementById("badgeTiempo");
+            const textoTiempo = document.getElementById("textoTiempo");
+
+            let mediaRecorder = null;
+            let fragmentosVideo = [];
+            let intervaloTiempo = null;
+            let segundosGrabados = 0;
+            let originalPRForVideo = null;
+
+            function obtenerMimeTypeOptimizado() {
+                const tipos = [
+                    "video/mp4;codecs=avc1.42E01E",
+                    "video/mp4",
+                    "video/webm;codecs=vp9",
+                    "video/webm;codecs=vp8",
+                    "video/webm"
+                ];
+                if (!window.MediaRecorder) return "";
+                for (const t of tipos) {
+                    if (MediaRecorder.isTypeSupported(t)) return t;
+                }
+                return "";
+            }
+
+            async function iniciarGrabacion() {
+                // Boost del renderer para que el modelo 3D se vea nítido a HD
+                const renderer = escenaEl.renderer;
+                originalPRForVideo = renderer ? renderer.getPixelRatio() : 1;
+                if (renderer) {
+                    const boost = Math.min((window.devicePixelRatio || 1) * 1.5, 3);
+                    renderer.setPixelRatio(Math.max(originalPRForVideo, boost));
+                }
+
+                await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+                // Configurar canvas composite en HD
+                const compCanvas = window.capturadorAR.canvasCompuesto;
+                const vw = window.innerWidth || 720;
+                const vh = window.innerHeight || 960;
+                const target = calcularResolucionCaptura(vw, vh, 'video');
+                compCanvas.width = target.w;
+                compCanvas.height = target.h;
+
+                // Rects frescos para el composite
+                invalidarRectsCompositor();
+
+                window.capturadorAR.solicitarFoto = false;
+                window.capturadorAR.grabandoVideo = true;
+
+                // Primer frame
+                const comp = escenaEl.components["compositor-ar"];
+                if (comp) comp.dibujarFrame();
+
+                fragmentosVideo = [];
+
+                const stream = compCanvas.captureStream(window.ficha.fpsVideo || 30);
+                const mimeType = obtenerMimeTypeOptimizado();
+
+                const opciones = {
+                    videoBitsPerSecond: window.ficha.bitrateVideo || 15000000
+                };
+                if (mimeType) opciones.mimeType = mimeType;
+
+                try {
+                    mediaRecorder = new MediaRecorder(stream, opciones);
+                } catch (e) {
+                    console.warn("[video] MediaRecorder con opciones falló, usando defaults:", e);
+                    mediaRecorder = new MediaRecorder(stream);
+                }
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) fragmentosVideo.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const tipoFinal = (mediaRecorder && mediaRecorder.mimeType) ? mediaRecorder.mimeType : "video/mp4";
+                    const blob = new Blob(fragmentosVideo, { type: tipoFinal });
+                    if (blob.size > 0 && window.mostrarVistaPreviaArchivo) {
+                        window.mostrarVistaPreviaArchivo(blob, "video");
+                    }
+                };
+
+                mediaRecorder.start(250);
+                btnVideo.classList.add("grabando");
+                badgeTiempo.classList.add("activo");
+                segundosGrabados = 0;
+                textoTiempo.textContent = "00:00";
+
+                intervaloTiempo = setInterval(() => {
+                    segundosGrabados++;
+                    const min = String(Math.floor(segundosGrabados / 60)).padStart(2, "0");
+                    const seg = String(segundosGrabados % 60).padStart(2, "0");
+                    textoTiempo.textContent = `${min}:${seg}`;
+
+                    // Auto-stop por seguridad
+                    if (window.ficha.maxDuracionVideoSeg && segundosGrabados >= window.ficha.maxDuracionVideoSeg) {
+                        detenerGrabacion();
+                    }
+                }, 1000);
+            }
+
+            function detenerGrabacion() {
+                window.capturadorAR.grabandoVideo = false;
+                clearInterval(intervaloTiempo);
+                btnVideo.classList.remove("grabando");
+                badgeTiempo.classList.remove("activo");
+
+                // Restaurar renderer tras detener
+                if (escenaEl.renderer && originalPRForVideo !== null) {
+                    setTimeout(() => {
+                        escenaEl.renderer.setPixelRatio(originalPRForVideo);
+                        originalPRForVideo = null;
+                    }, 400);
+                }
+
+                if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                    try { mediaRecorder.requestData(); } catch (e) {}
+                    setTimeout(() => {
+                        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                            mediaRecorder.stop();
+                        }
+                    }, 120);
+                }
+            }
+
+            btnVideo.addEventListener("click", () => {
+                if (!window.capturadorAR.grabandoVideo) {
+                    iniciarGrabacion().catch(err => {
+                        console.error("[video] Error al iniciar grabación:", err);
+                        window.capturadorAR.grabandoVideo = false;
+                        btnVideo.classList.remove("grabando");
+                        badgeTiempo.classList.remove("activo");
+                        clearInterval(intervaloTiempo);
+                    });
+                } else {
+                    detenerGrabacion();
                 }
             });
 
-            // ================================================
-            // 5. Helpers para ajustar la resolución del renderer
-            //    (evita que el modelo se vea borroso al hacer el composite)
-            // ================================================
-            function getSceneRenderer() { return escenaEl && escenaEl.renderer; }
+            // =========================================================
+            // 8. Modal de vista previa, guardado y descarga
+            // =========================================================
+            const modalPreview = document.getElementById("modalPreview");
+            const contenedorMedia = document.getElementById("contenedorMedia");
+            const pesoArchivo = document.getElementById("pesoArchivo");
+            const tituloPreview = document.getElementById("tituloPreview");
+            const btnCerrarPreview = document.getElementById("btnCerrarPreview");
+            const btnCompartir = document.getElementById("btnCompartir");
+            const btnDescargar = document.getElementById("btnDescargar");
 
-            // Capturamos el pixelRatio original de A-Frame una sola vez
-            let defaultPixelRatio = null;
-            setTimeout(() => {
-                const renderer = getSceneRenderer();
-                if (renderer && typeof renderer.getPixelRatio === "function") {
-                    defaultPixelRatio = renderer.getPixelRatio();
+            let urlArchivoActual = null;
+            let archivoActualObj = null;
+            let nombreArchivoActual = "";
+
+            window.mostrarVistaPreviaArchivo = (blob, tipo) => {
+                if (urlArchivoActual) {
+                    try { URL.revokeObjectURL(urlArchivoActual); } catch (e) {}
                 }
-            }, 1500);
 
-            function getDefaultPR() {
-                if (defaultPixelRatio !== null) return defaultPixelRatio;
-                return Math.min(window.devicePixelRatio || 1, 2);
-            }
+                urlArchivoActual = URL.createObjectURL(blob);
+                contenedorMedia.innerHTML = "";
 
-            function setRenderPixelRatio(pr) {
-                const renderer = getSceneRenderer();
-                if (renderer && typeof renderer.setPixelRatio === "function") {
-                    try { renderer.setPixelRatio(pr); } catch (e) {}
+                const kb = blob.size / 1024;
+                pesoArchivo.textContent = kb < 1024
+                    ? `${Math.max(1, Math.round(kb))} KB`
+                    : `${(kb / 1024).toFixed(2)} MB`;
+
+                const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+
+                if (tipo === "foto") {
+                    tituloPreview.textContent = "Fotografía AR";
+                    nombreArchivoActual = `foto-ar-${timestamp}.jpg`;
+                    archivoActualObj = new File([blob], nombreArchivoActual, { type: "image/jpeg" });
+
+                    const img = document.createElement("img");
+                    img.src = urlArchivoActual;
+                    contenedorMedia.appendChild(img);
+                } else {
+                    tituloPreview.textContent = "Video AR (HD)";
+                    const esMp4 = blob.type && blob.type.includes("mp4");
+                    const ext = esMp4 ? "mp4" : "webm";
+                    const mimeLimpio = esMp4 ? "video/mp4" : "video/webm";
+                    nombreArchivoActual = `video-ar-${timestamp}.${ext}`;
+                    archivoActualObj = new File([blob], nombreArchivoActual, { type: mimeLimpio });
+
+                    const vid = document.createElement("video");
+                    vid.src = urlArchivoActual;
+                    vid.controls = true;
+                    vid.autoplay = true;
+                    vid.loop = true;
+                    vid.muted = true;
+                    vid.playsInline = true;
+                    contenedorMedia.appendChild(vid);
                 }
-            }
 
-            // PixelRatio necesario para que el canvas WebGL (del modelo 3D)
-            // se renderice a la resolución del composite (4K). Topes distintos:
-            //   - FOTO: 6x (spike de un solo frame, no sostenido)
-            //   - VIDEO: 3x (sostenido durante la grabación, sostenible)
-            function getCapturePixelRatio(targetMaxPx, cap) {
-                const vwCss = Math
+                if (navigator.canShare && archivoActualObj && navigator.canShare({ files: [archivoActualObj] })) {
+                    btnCompartir.style.display = "flex";
+                } else {
+                    btnCompartir.style.display = "none";
+                }
+
+                modalPreview.classList.add("activo");
+            };
+
+            btnCerrarPreview.addEventListener("click", () => {
+                modalPreview.classList.remove("activo");
+                contenedorMedia.innerHTML = "";
+            });
+
+            btnCompartir.addEventListener("click", async () => {
+                if (!archivoActualObj) return;
+                try {
+                    await navigator.share({
+                        files: [archivoActualObj],
+                        title: window.ficha.titulo
+                    });
+                } catch (e) {
+                    console.log("Compartir cancelado:", e);
+                }
+            });
+
+            btnDescargar.addEventListener("click", () => {
+                if (!urlArchivoActual) return;
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = urlArchivoActual;
+                a.download = nombreArchivoActual;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => document.body.removeChild(a), 200);
+            });
+        });
+    </script>
+
+</body>
+</html>
