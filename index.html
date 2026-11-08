@@ -7,12 +7,6 @@
     <meta name="theme-color" content="#000000">
     <title>Experiencia AR - Tori Mask</title>
 
-    <!-- Precarga para acelerar el inicio -->
-    <link rel="preconnect" href="https://aframe.io" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="preload" href="./targets/imagen_rastreo.mind" as="fetch" crossorigin>
-    <link rel="preload" href="./models/giro-torimask-opt.glb" as="fetch" crossorigin>
-
     <!-- ===================================================== -->
     <!-- 1. CONFIGURACIÓN DEL PROYECTO                         -->
     <!-- ===================================================== -->
@@ -21,8 +15,8 @@
             modelo: "./models/giro-torimask-opt.glb",
             marcadorMind: "./targets/imagen_rastreo.mind",
 
-            // Escala multiplicada x4 (original era 3.6 -> ahora 14.4)
-            escala: 14.4,
+            // 3 veces el tamaño del modelo original (base 1.2 × 3 = 3.6)
+            escala: 3.6,
             rotacionInicial: "0 0 0",
 
             // ===== Calidad de captura =====
@@ -31,6 +25,10 @@
             fpsVideo: 30,
             maxDuracionVideoSeg: 60,
 
+            // ===== Cámara de entrada ágil (720p inicia rápido sin saturar MindAR) =====
+            camara: { width: 1280, height: 720 },
+
+            // ===== Calidad del viewer 3D en vivo =====
             viewerPixelRatioMax: 2.0,
 
             categoria: "Stickers RA",
@@ -41,9 +39,27 @@
             mapa: "",
             historia: "."
         };
-        
-        // Eliminado el bloque restrictivo de navigator.mediaDevices.getUserMedia
-        // para permitir un inicio de cámara inmediato sin lag de hardware.
+
+        window.modoCamaraActual = "environment";
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const getUserMediaOriginal = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+            navigator.mediaDevices.getUserMedia = function (constraints) {
+                if (constraints && constraints.video) {
+                    const videoBase = typeof constraints.video === "object" ? constraints.video : {};
+                    constraints = {
+                        ...constraints,
+                        video: {
+                            ...videoBase,
+                            facingMode: { ideal: window.modoCamaraActual },
+                            width: { ideal: window.ficha.camara.width },
+                            height: { ideal: window.ficha.camara.height }
+                        }
+                    };
+                }
+                return getUserMediaOriginal(constraints);
+            };
+        }
     </script>
 
     <!-- ===================================================== -->
@@ -56,10 +72,10 @@
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
-        body {
-            margin: 0; padding: 0; overflow: hidden;
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background-color: #000000; color: #222222;
+            background-color: transparent; color: #222222;
         }
 
         /* BARRA SUPERIOR */
@@ -288,29 +304,6 @@
     <!-- 3. HELPERS GLOBALES + COMPONENTES 3D                  -->
     <!-- ===================================================== -->
     <script>
-        // Sincronización UI - Estado de carga
-        window.estadoAR = {
-            camaraLista: false,
-            modeloListo: false,
-            errorModelo: false,
-            actualizarBadge: function () {
-                const badge = document.getElementById('estadoCarga');
-                if (!badge) return;
-                if (this.errorModelo) {
-                    badge.textContent = "⚠️ Error al cargar modelo";
-                    badge.style.backgroundColor = "#8b0000";
-                    return;
-                }
-                if (this.camaraLista && this.modeloListo) {
-                    badge.textContent = "✓ Listo para escanear";
-                } else if (this.camaraLista && !this.modeloListo) {
-                    badge.textContent = "Cargando modelo 3D...";
-                } else if (!this.camaraLista && this.modeloListo) {
-                    badge.textContent = "Iniciando cámara...";
-                }
-            }
-        };
-
         function calcularResolucionCaptura(vw, vh, modo) {
             const minSide = Math.min(vw, vh);
             const escalaBase = (modo === 'video' ? 1080 : 1440) / minSide;
@@ -334,6 +327,9 @@
             ctxCompuesto: null
         };
 
+        // ============================================================
+        // COMPOSITOR: une cámara + 3D para fotos y videos
+        // ============================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
                 const canvas = document.createElement('canvas');
@@ -353,27 +349,32 @@
 
             _getRects: function () {
                 if (this._rects) return this._rects;
+
                 const video = document.querySelector('video');
                 const glCanvas = this.el.canvas;
                 if (!glCanvas) return null;
 
                 const vw = window.innerWidth || 720;
                 const vh = window.innerHeight || 960;
+
                 const vRect = (video && video.readyState >= 2)
                     ? video.getBoundingClientRect()
                     : { left: 0, top: 0, width: vw, height: vh };
 
                 const cRect = glCanvas.getBoundingClientRect();
+
                 this._rects = { video, glCanvas, vRect, cRect, vw, vh };
                 return this._rects;
             },
 
             tock: function (time) {
                 if (!window.capturadorAR.solicitarFoto && !window.capturadorAR.grabandoVideo) return;
+
                 if (window.capturadorAR.grabandoVideo) {
                     if (time - this._lastDrawTime < 33) return;
                     this._lastDrawTime = time;
                 }
+
                 this.dibujarFrame();
             },
 
@@ -384,6 +385,7 @@
 
                 const r = this._getRects();
                 if (!r || !r.glCanvas) return;
+
                 const { video, glCanvas, vRect, cRect, vw, vh } = r;
 
                 if (!window.capturadorAR.grabandoVideo && window.capturadorAR.solicitarFoto) {
@@ -406,11 +408,23 @@
                         ctx.translate(W, 0);
                         ctx.scale(-1, 1);
                     }
-                    ctx.drawImage(video, (vRect.left / vw) * W, (vRect.top / vh) * H, (vRect.width / vw) * W, (vRect.height / vh) * H);
+                    ctx.drawImage(
+                        video,
+                        (vRect.left / vw) * W,
+                        (vRect.top / vh) * H,
+                        (vRect.width / vw) * W,
+                        (vRect.height / vh) * H
+                    );
                     ctx.restore();
                 }
 
-                ctx.drawImage(glCanvas, (cRect.left / vw) * W, (cRect.top / vh) * H, (cRect.width / vw) * W, (cRect.height / vh) * H);
+                ctx.drawImage(
+                    glCanvas,
+                    (cRect.left / vw) * W,
+                    (cRect.top / vh) * H,
+                    (cRect.width / vw) * W,
+                    (cRect.height / vh) * H
+                );
 
                 if (window.capturadorAR.solicitarFoto) {
                     window.capturadorAR.solicitarFoto = false;
@@ -423,6 +437,9 @@
             }
         });
 
+        // ============================================================
+        // CARGADOR DE MODELO 3D — Centrado seguro sin conflicto de animación
+        // ============================================================
         AFRAME.registerComponent('modelo-animado-ar', {
             init: function () {
                 this.mixer = null;
@@ -432,12 +449,19 @@
                 this.contenedor = null;
 
                 const el = this.el;
+                const estadoUI = document.getElementById('estadoCarga');
                 const THREE = AFRAME.THREE;
 
                 const cargarGLB = () => {
                     const loader = new THREE.GLTFLoader();
-                    if (window.MeshoptDecoder) loader.setMeshoptDecoder(window.MeshoptDecoder);
 
+                    // Soporte seguro para MeshoptDecoder (global o window)
+                    const meshopt = (typeof MeshoptDecoder !== 'undefined') ? MeshoptDecoder : window.MeshoptDecoder;
+                    if (meshopt) {
+                        loader.setMeshoptDecoder(meshopt);
+                    }
+
+                    // Soporte para DRACOLoader
                     if (THREE.DRACOLoader) {
                         const dracoLoader = new THREE.DRACOLoader();
                         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
@@ -448,69 +472,99 @@
                         window.ficha.modelo,
                         (gltf) => {
                             const model = gltf.scene;
-                            const wrapper = new THREE.Group();
-                            wrapper.add(model);
 
-                            model.updateMatrixWorld(true);
-                            const box = new THREE.Box3().setFromObject(model);
-                            const size = box.getSize(new THREE.Vector3());
-                            const center = box.getCenter(new THREE.Vector3());
-                            const maxDim = Math.max(size.x, size.y, size.z);
-
-                            if (Number.isFinite(maxDim) && maxDim > 0) {
-                                const factor = (window.ficha.escala || 14.4) / maxDim;
-                                model.position.set(-center.x, -center.y, -center.z);
-                                wrapper.scale.setScalar(factor);
-                            } else {
-                                wrapper.scale.setScalar(window.ficha.escala || 14.4);
-                            }
-
-                            // Limpiado el error de WebGL: 
-                            // Solo se desactiva frustum culling, sin forzar mipmaps en texturas comprimidas
-                            model.traverse((node) => {
-                                if (node.isMesh) node.frustumCulled = false;
-                            });
-
-                            el.setObject3D('mesh', wrapper);
-                            this.contenedor = wrapper;
-
+                            // 1. Inicializar animaciones primero y evaluar en t=0
+                            // para que los huesos/nodos tengan su transformación real antes de medir Box3
                             if (gltf.animations && gltf.animations.length > 0) {
                                 this.mixer = new THREE.AnimationMixer(model);
                                 gltf.animations.forEach((clip) => {
                                     const action = this.mixer.clipAction(clip);
                                     action.setLoop(THREE.LoopRepeat, Infinity);
-                                    if (this.activo) action.play();
+                                    action.play();
                                     this.actions.push(action);
                                 });
+                                this.mixer.update(0);
                             } else {
                                 this.giroRespaldo = true;
                             }
 
-                            window.estadoAR.modeloListo = true;
-                            window.estadoAR.actualizarBadge();
+                            // 2. Calcular Bounding Box únicamente de las mallas visibles (isMesh)
+                            model.updateMatrixWorld(true);
+                            const box = new THREE.Box3();
+                            model.traverse((node) => {
+                                if (node.isMesh) {
+                                    node.frustumCulled = false;
+                                    box.expandByObject(node);
+
+                                    // Renderizar ambas caras (DoubleSide) para evitar que el modelo
+                                    // desaparezca si gira o se acerca al plano de la cámara
+                                    const mats = Array.isArray(node.material) ? node.material : [node.material];
+                                    mats.forEach((mat) => {
+                                        if (!mat) return;
+                                        mat.side = THREE.DoubleSide;
+                                        mat.needsUpdate = true;
+                                    });
+                                }
+                            });
+
+                            // Fallback si por algún motivo box quedó vacío
+                            if (box.isEmpty()) {
+                                box.setFromObject(model);
+                            }
+
+                            const size = box.getSize(new THREE.Vector3());
+                            const center = box.getCenter(new THREE.Vector3());
+                            const maxDim = Math.max(size.x, size.y, size.z);
+
+                            // 3. Jerarquía de doble grupo para no sobrescribir model.position
+                            // (evita conflictos con las pistas de animación del GLB)
+                            const pivotGroup = new THREE.Group();
+                            const offsetGroup = new THREE.Group();
+
+                            offsetGroup.add(model);
+                            pivotGroup.add(offsetGroup);
+
+                            const escalaObjetivo = window.ficha.escala || 3.6;
+                            if (Number.isFinite(maxDim) && maxDim > 0.0001) {
+                                const factor = escalaObjetivo / maxDim;
+                                offsetGroup.position.set(-center.x, -center.y, -center.z);
+                                pivotGroup.scale.setScalar(factor);
+                            } else {
+                                pivotGroup.scale.setScalar(escalaObjetivo);
+                            }
+
+                            el.setObject3D('mesh', pivotGroup);
+                            this.contenedor = pivotGroup;
+
+                            if (estadoUI) {
+                                estadoUI.textContent = "✓ Listo para escanear";
+                            }
                         },
                         undefined,
                         (error) => {
                             console.error("Error cargando GLB:", error);
-                            window.estadoAR.errorModelo = true;
-                            window.estadoAR.actualizarBadge();
+                            if (estadoUI) {
+                                estadoUI.textContent = "⚠️ Error al cargar modelo";
+                                estadoUI.style.backgroundColor = "#8b0000";
+                            }
                         }
                     );
                 };
 
-                if (window.MeshoptDecoder && window.MeshoptDecoder.ready) {
-                    window.MeshoptDecoder.ready.then(cargarGLB).catch(() => cargarGLB());
+                const meshoptGlobal = (typeof MeshoptDecoder !== 'undefined') ? MeshoptDecoder : window.MeshoptDecoder;
+                if (meshoptGlobal && meshoptGlobal.ready) {
+                    meshoptGlobal.ready.then(cargarGLB).catch(() => cargarGLB());
                 } else {
                     cargarGLB();
                 }
 
                 const targetEl = document.getElementById('objetivoAR');
+
                 targetEl.addEventListener('targetFound', () => {
                     this.activo = true;
                     if (this.mixer && this.actions.length > 0) {
                         this.actions.forEach(a => {
                             a.paused = false;
-                            a.reset();
                             a.play();
                         });
                     }
@@ -635,14 +689,14 @@
         id="escenaAR"
         compositor-ar
         loading-screen="enabled: false"
-        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
+        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.01; warmupTolerance: 1; missTolerance: 10;"
         color-space="sRGB"
         renderer="colorManagement: true; antialias: true; alpha: true; preserveDrawingBuffer: true; powerPreference: high-performance;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
-        <a-light type="hemisphere" color="#ffffff" groundColor="#5a5a5a" intensity="0.7"></a-light>
-        <a-light type="ambient" color="#ffffff" intensity="1.0"></a-light>
+        <a-light type="hemisphere" color="#ffffff" groundColor="#5a5a5a" intensity="0.9"></a-light>
+        <a-light type="ambient" color="#ffffff" intensity="1.1"></a-light>
         <a-light type="directional" color="#ffffff" intensity="2.0" position="1.5 2.5 2"></a-light>
         <a-light type="directional" color="#ffdcb4" intensity="0.9" position="-1.5 -1 1"></a-light>
 
@@ -665,20 +719,8 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const escenaEl = document.getElementById("escenaAR");
-            const estadoCarga = document.getElementById("estadoCarga");
 
-            // Eventos de estado de cámara MindAR
-            escenaEl.addEventListener("arReady", () => {
-                window.estadoAR.camaraLista = true;
-                window.estadoAR.actualizarBadge();
-            });
-
-            escenaEl.addEventListener("arError", (ev) => {
-                console.error("Error al iniciar MindAR:", ev);
-                estadoCarga.textContent = "⚠️ Permiso de cámara requerido";
-                estadoCarga.style.backgroundColor = "#8b0000";
-            });
-
+            // 1. Cargar datos de la ficha
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
@@ -697,18 +739,25 @@
                 botonMapa.style.display = "block";
             }
 
+            // 2. Ajustar resolución del renderer
             function aplicarViewerPixelRatio() {
                 const renderer = escenaEl && escenaEl.renderer;
                 if (!renderer || typeof renderer.setPixelRatio !== 'function') return;
                 const dpr = window.devicePixelRatio || 1;
                 const target = Math.min(dpr, window.ficha.viewerPixelRatioMax || 2.0);
                 const current = (typeof renderer.getPixelRatio === 'function') ? renderer.getPixelRatio() : 1;
-                if (current < target) renderer.setPixelRatio(target);
+                if (current < target) {
+                    renderer.setPixelRatio(target);
+                }
             }
 
-            if (escenaEl.hasLoaded) aplicarViewerPixelRatio();
-            else escenaEl.addEventListener('loaded', aplicarViewerPixelRatio);
+            if (escenaEl.hasLoaded) {
+                aplicarViewerPixelRatio();
+            } else {
+                escenaEl.addEventListener('loaded', aplicarViewerPixelRatio);
+            }
 
+            // 3. Ficha informativa
             const panelInferior = document.getElementById("panelInferior");
             const btnAbrirFicha = document.getElementById("btnAbrirFicha");
             const btnCerrarFicha = document.getElementById("btnCerrarFicha");
@@ -716,10 +765,13 @@
             btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
+            // 4. Detección con feedback visual
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
             const instruccionAR = document.getElementById("instruccionAR");
+            const estadoCarga = document.getElementById("estadoCarga");
+
             let timeoutOcultarUI = null;
 
             objetivoAR.addEventListener("targetFound", () => {
@@ -747,6 +799,7 @@
                 estadoCarga.style.opacity = "1";
             });
 
+            // 5. Cambio de cámara con respaldo
             const btnCambiarCamara = document.getElementById("btnCambiarCamara");
 
             function invalidarRectsCompositor() {
@@ -754,35 +807,78 @@
                 if (comp && typeof comp.invalidarRects === "function") comp.invalidarRects();
             }
 
-            btnCambiarCamara.addEventListener("click", () => {
+            async function cambiarCamara() {
                 if (window._cambiandoCamara) return;
                 window._cambiandoCamara = true;
                 btnCambiarCamara.disabled = true;
                 btnCambiarCamara.classList.toggle("girando");
 
+                const modoPrevio = window.modoCamaraActual;
+                const nuevoModo = modoPrevio === "environment" ? "user" : "environment";
+                window.modoCamaraActual = nuevoModo;
+
+                let ok = false;
+
                 try {
                     const mindarSystem = escenaEl.systems["mindar-image-system"];
                     if (mindarSystem && typeof mindarSystem.switchCamera === "function") {
-                        mindarSystem.switchCamera();
+                        const r = mindarSystem.switchCamera();
+                        if (r && typeof r.then === "function") await r;
+                        ok = true;
                     }
                 } catch (err) {
-                    console.warn("Error al cambiar cámara:", err);
+                    console.warn("[camera] switchCamera() falló:", err);
                 }
-                
-                invalidarRectsCompositor();
-                setTimeout(invalidarRectsCompositor, 400);
 
-                setTimeout(() => {
-                    btnCambiarCamara.disabled = false;
-                    window._cambiandoCamara = false;
-                }, 800);
-            });
+                if (!ok) {
+                    try {
+                        const videos = document.querySelectorAll("video");
+                        videos.forEach(v => {
+                            if (v.srcObject) {
+                                try { v.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {}
+                            }
+                        });
 
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                facingMode: { ideal: nuevoModo },
+                                width: { ideal: window.ficha.camara.width },
+                                height: { ideal: window.ficha.camara.height }
+                            },
+                            audio: false
+                        });
+
+                        for (const video of videos) {
+                            video.srcObject = stream;
+                            try { await video.play(); } catch (e) {}
+                        }
+                        ok = true;
+                    } catch (err) {
+                        console.error("[camera] fallback getUserMedia falló:", err);
+                    }
+                }
+
+                if (!ok) {
+                    window.modoCamaraActual = modoPrevio;
+                    btnCambiarCamara.classList.toggle("girando");
+                } else {
+                    invalidarRectsCompositor();
+                    setTimeout(invalidarRectsCompositor, 400);
+                }
+
+                btnCambiarCamara.disabled = false;
+                window._cambiandoCamara = false;
+            }
+
+            btnCambiarCamara.addEventListener("click", cambiarCamara);
+
+            // 6. Captura de FOTO
             const btnFoto = document.getElementById("btnFoto");
             const flashPantalla = document.getElementById("flashPantalla");
 
             btnFoto.addEventListener("click", async () => {
                 if (window.capturadorAR.grabandoVideo) return;
+
                 flashPantalla.style.opacity = "0.85";
                 setTimeout(() => { flashPantalla.style.opacity = "0"; }, 180);
 
@@ -794,6 +890,7 @@
                 }
 
                 await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
                 window.capturadorAR.solicitarFoto = true;
 
                 setTimeout(() => {
@@ -801,6 +898,7 @@
                 }, 900);
             });
 
+            // 7. Grabación de VIDEO HD
             const btnVideo = document.getElementById("btnVideo");
             const badgeTiempo = document.getElementById("badgeTiempo");
             const textoTiempo = document.getElementById("textoTiempo");
@@ -812,7 +910,13 @@
             let originalPRForVideo = null;
 
             function obtenerMimeTypeOptimizado() {
-                const tipos = ["video/mp4;codecs=avc1.42E01E", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+                const tipos = [
+                    "video/mp4;codecs=avc1.42E01E",
+                    "video/mp4",
+                    "video/webm;codecs=vp9",
+                    "video/webm;codecs=vp8",
+                    "video/webm"
+                ];
                 if (!window.MediaRecorder) return "";
                 for (const t of tipos) {
                     if (MediaRecorder.isTypeSupported(t)) return t;
@@ -846,10 +950,13 @@
                 if (comp) comp.dibujarFrame();
 
                 fragmentosVideo = [];
+
                 const stream = compCanvas.captureStream(window.ficha.fpsVideo || 30);
                 const mimeType = obtenerMimeTypeOptimizado();
 
-                const opciones = { videoBitsPerSecond: window.ficha.bitrateVideo || 15000000 };
+                const opciones = {
+                    videoBitsPerSecond: window.ficha.bitrateVideo || 15000000
+                };
                 if (mimeType) opciones.mimeType = mimeType;
 
                 try {
@@ -904,7 +1011,9 @@
                 if (mediaRecorder && mediaRecorder.state !== "inactive") {
                     try { mediaRecorder.requestData(); } catch (e) {}
                     setTimeout(() => {
-                        if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+                        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                            mediaRecorder.stop();
+                        }
                     }, 120);
                 }
             }
@@ -912,6 +1021,7 @@
             btnVideo.addEventListener("click", () => {
                 if (!window.capturadorAR.grabandoVideo) {
                     iniciarGrabacion().catch(err => {
+                        console.error("[video] Error al iniciar grabación:", err);
                         window.capturadorAR.grabandoVideo = false;
                         btnVideo.classList.remove("grabando");
                         badgeTiempo.classList.remove("activo");
@@ -922,6 +1032,7 @@
                 }
             });
 
+            // 8. Modal de vista previa, guardado y descarga
             const modalPreview = document.getElementById("modalPreview");
             const contenedorMedia = document.getElementById("contenedorMedia");
             const pesoArchivo = document.getElementById("pesoArchivo");
@@ -935,13 +1046,17 @@
             let nombreArchivoActual = "";
 
             window.mostrarVistaPreviaArchivo = (blob, tipo) => {
-                if (urlArchivoActual) try { URL.revokeObjectURL(urlArchivoActual); } catch (e) {}
+                if (urlArchivoActual) {
+                    try { URL.revokeObjectURL(urlArchivoActual); } catch (e) {}
+                }
 
                 urlArchivoActual = URL.createObjectURL(blob);
                 contenedorMedia.innerHTML = "";
 
                 const kb = blob.size / 1024;
-                pesoArchivo.textContent = kb < 1024 ? `${Math.max(1, Math.round(kb))} KB` : `${(kb / 1024).toFixed(2)} MB`;
+                pesoArchivo.textContent = kb < 1024
+                    ? `${Math.max(1, Math.round(kb))} KB`
+                    : `${(kb / 1024).toFixed(2)} MB`;
 
                 const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
 
@@ -949,6 +1064,7 @@
                     tituloPreview.textContent = "Fotografía AR";
                     nombreArchivoActual = `foto-ar-${timestamp}.jpg`;
                     archivoActualObj = new File([blob], nombreArchivoActual, { type: "image/jpeg" });
+
                     const img = document.createElement("img");
                     img.src = urlArchivoActual;
                     contenedorMedia.appendChild(img);
@@ -987,8 +1103,13 @@
             btnCompartir.addEventListener("click", async () => {
                 if (!archivoActualObj) return;
                 try {
-                    await navigator.share({ files: [archivoActualObj], title: window.ficha.titulo });
-                } catch (e) { }
+                    await navigator.share({
+                        files: [archivoActualObj],
+                        title: window.ficha.titulo
+                    });
+                } catch (e) {
+                    console.log("Compartir cancelado:", e);
+                }
             });
 
             btnDescargar.addEventListener("click", () => {
