@@ -7,6 +7,12 @@
     <meta name="theme-color" content="#000000">
     <title>Experiencia AR - Tori Mask</title>
 
+    <!-- Precarga paralela de recursos críticos para acelerar el inicio -->
+    <link rel="preconnect" href="https://aframe.io" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preload" href="./targets/imagen_rastreo.mind" as="fetch" crossorigin>
+    <link rel="preload" href="./models/giro-torimask-opt.glb" as="fetch" crossorigin>
+
     <!-- ===================================================== -->
     <!-- 1. CONFIGURACIÓN DEL PROYECTO                         -->
     <!-- ===================================================== -->
@@ -15,7 +21,8 @@
             modelo: "./models/giro-torimask-opt.glb",
             marcadorMind: "./targets/imagen_rastreo.mind",
 
-            escala: 3.6,
+            // Escala 4 veces más grande (3.6 × 4 = 14.4)
+            escala: 14.4,
             rotacionInicial: "0 0 0",
 
             // ===== Calidad de captura =====
@@ -25,17 +32,16 @@
             maxDuracionVideoSeg: 60,
 
             // ===== Cámara de entrada (fuente para MindAR) =====
-            // 1080p es el punto dulce: suficiente nitidez para el composite,
-            // y rápido para el detector MindAR.
-            camara: { width: 1920, height: 1080 },
+            // 720p a 30fps inicia la cámara mucho más rápido en móviles
+            // y acelera el detector MindAR sin perder nitidez visual.
+            camara: { width: 1280, height: 720, fps: 30 },
 
             // ===== Calidad del viewer 3D en vivo =====
-            // 2.5x es el tope seguro para DPR; se ve nítido sin calentar el móvil.
-            viewerPixelRatioMax: 2.5,
+            viewerPixelRatioMax: 2.0,
 
             categoria: "Stickers RA",
             titulo: "Guerrero Demonio",
-            autor: "Rawnin del" Desierto,
+            autor: "Rawnin del Desierto",
             anio: "2026",
             ubicacion: "Mexa Web",
             mapa: "",
@@ -55,7 +61,8 @@
                             ...videoBase,
                             facingMode: { ideal: window.modoCamaraActual },
                             width: { ideal: window.ficha.camara.width },
-                            height: { ideal: window.ficha.camara.height }
+                            height: { ideal: window.ficha.camara.height },
+                            frameRate: { ideal: window.ficha.camara.fps, max: 30 }
                         }
                     };
                 }
@@ -92,7 +99,7 @@
             background: rgba(20,20,20,0.72); border: 1px solid rgba(255,255,255,0.18);
             padding: 7px 14px; border-radius: 20px;
             backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            transition: opacity 0.4s ease;
+            transition: opacity 0.4s ease, background-color 0.3s ease;
         }
         #btnAbrirFicha {
             pointer-events: auto; display: none; width: 40px; height: 40px;
@@ -306,12 +313,32 @@
     <!-- 3. HELPERS GLOBALES + COMPONENTES 3D                  -->
     <!-- ===================================================== -->
     <script>
-        // ============================================================
+        // Estado global de carga para sincronizar cámara + modelo 3D
+        window.estadoAR = {
+            camaraLista: false,
+            modeloListo: false,
+            errorModelo: false,
+            actualizarBadge: function () {
+                const badge = document.getElementById('estadoCarga');
+                if (!badge) return;
+                if (this.errorModelo) {
+                    badge.textContent = "⚠️ Error al cargar modelo";
+                    badge.style.backgroundColor = "#8b0000";
+                    return;
+                }
+                if (this.camaraLista && this.modeloListo) {
+                    badge.textContent = "✓ Listo para escanear";
+                } else if (this.camaraLista && !this.modeloListo) {
+                    badge.textContent = "Cargando modelo 3D...";
+                } else if (!this.camaraLista && this.modeloListo) {
+                    badge.textContent = "Iniciando cámara...";
+                }
+            }
+        };
+
         // Helpers de resolución (foto / video) con aspect-ratio natural
-        // ============================================================
         function calcularResolucionCaptura(vw, vh, modo) {
             const minSide = Math.min(vw, vh);
-            // VIDEO: 1080 en el lado corto (HD real) — FOTO: 1440 en el lado corto
             const escalaBase = (modo === 'video' ? 1080 : 1440) / minSide;
             const capLong = modo === 'video' ? 2560 : 3840;
 
@@ -336,9 +363,6 @@
 
         // ============================================================
         // COMPOSITOR: une cámara + 3D
-        // - Caché de rects (evita layout thrashing a 30 fps)
-        // - Auto-resize solo cuando captura foto
-        // - Throttle a ~30 fps durante grabación
         // ============================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
@@ -398,7 +422,6 @@
 
                 const { video, glCanvas, vRect, cRect, vw, vh } = r;
 
-                // FOTO: resize on-the-fly aquí. VIDEO: resize externo al iniciar.
                 if (!window.capturadorAR.grabandoVideo && window.capturadorAR.solicitarFoto) {
                     const target = calcularResolucionCaptura(vw, vh, 'foto');
                     if (compCanvas.width !== target.w || compCanvas.height !== target.h) {
@@ -449,7 +472,7 @@
         });
 
         // ============================================================
-        // CARGADOR DE MODELO — con anisotropía para nitidez en ángulo
+        // CARGADOR DE MODELO — con escala 4x y auto-play sincronizado
         // ============================================================
         AFRAME.registerComponent('modelo-animado-ar', {
             init: function () {
@@ -460,13 +483,14 @@
                 this.contenedor = null;
 
                 const el = this.el;
-                const estadoUI = document.getElementById('estadoCarga');
                 const THREE = AFRAME.THREE;
 
                 const cargarGLB = () => {
                     const loader = new THREE.GLTFLoader();
 
-                    if (window.MeshoptDecoder) loader.setMeshoptDecoder(window.MeshoptDecoder);
+                    if (window.MeshoptDecoder) {
+                        loader.setMeshoptDecoder(window.MeshoptDecoder);
+                    }
 
                     if (THREE.DRACOLoader) {
                         const dracoLoader = new THREE.DRACOLoader();
@@ -481,19 +505,22 @@
                             const wrapper = new THREE.Group();
                             wrapper.add(model);
 
-                            // Ajustar escala y centrar
+                            // Calcular bounding box para centrar y escalar a window.ficha.escala (14.4)
+                            model.updateMatrixWorld(true);
                             const box = new THREE.Box3().setFromObject(model);
                             const size = box.getSize(new THREE.Vector3());
                             const center = box.getCenter(new THREE.Vector3());
 
                             const maxDim = Math.max(size.x, size.y, size.z);
-                            if (maxDim > 0) {
-                                const factor = (window.ficha.escala || 1.2) / maxDim;
-                                wrapper.scale.setScalar(factor);
+                            if (Number.isFinite(maxDim) && maxDim > 0) {
+                                const factor = (window.ficha.escala || 14.4) / maxDim;
                                 model.position.set(-center.x, -center.y, -center.z);
+                                wrapper.scale.setScalar(factor);
+                            } else {
+                                wrapper.scale.setScalar(window.ficha.escala || 14.4);
                             }
 
-                            // === Mejoras de nitidez del modelo ===
+                            // Mejoras de nitidez y desactivación de frustum culling para modelos grandes
                             const aniso = 8;
                             model.traverse((node) => {
                                 if (node.isMesh) {
@@ -525,24 +552,29 @@
                                 gltf.animations.forEach((clip) => {
                                     const action = this.mixer.clipAction(clip);
                                     action.setLoop(THREE.LoopRepeat, Infinity);
+                                    if (this.activo) {
+                                        action.play();
+                                    }
                                     this.actions.push(action);
                                 });
                             } else {
                                 this.giroRespaldo = true;
                             }
-                            estadoUI.textContent = "✓ Listo para escanear";
+
+                            window.estadoAR.modeloListo = true;
+                            window.estadoAR.actualizarBadge();
                         },
                         undefined,
                         (error) => {
                             console.error("Error cargando GLB:", error);
-                            estadoUI.textContent = "⚠️ Error al cargar modelo";
-                            estadoUI.style.backgroundColor = "#8b0000";
+                            window.estadoAR.errorModelo = true;
+                            window.estadoAR.actualizarBadge();
                         }
                     );
                 };
 
                 if (window.MeshoptDecoder && window.MeshoptDecoder.ready) {
-                    window.MeshoptDecoder.ready.then(cargarGLB);
+                    window.MeshoptDecoder.ready.then(cargarGLB).catch(() => cargarGLB());
                 } else {
                     cargarGLB();
                 }
@@ -552,7 +584,11 @@
                 targetEl.addEventListener('targetFound', () => {
                     this.activo = true;
                     if (this.mixer && this.actions.length > 0) {
-                        this.actions.forEach(a => { a.reset(); a.play(); });
+                        this.actions.forEach(a => {
+                            a.paused = false;
+                            a.reset();
+                            a.play();
+                        });
                     }
                 });
 
@@ -566,7 +602,6 @@
 
             tick: function (time, timeDelta) {
                 if (!this.activo) return;
-                // Cap delta a 50 ms para evitar saltos si un frame tardó
                 const delta = Math.min(timeDelta / 1000, 0.05);
                 if (this.mixer) {
                     this.mixer.update(delta);
@@ -676,7 +711,7 @@
         id="escenaAR"
         compositor-ar
         loading-screen="enabled: false"
-        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.01; warmupTolerance: 3; missTolerance: 10;"
+        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.01; warmupTolerance: 1; missTolerance: 8;"
         color-space="sRGB"
         renderer="colorManagement: true; antialias: true; alpha: true; preserveDrawingBuffer: true; powerPreference: high-performance;"
         vr-mode-ui="enabled: false"
@@ -707,9 +742,24 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const escenaEl = document.getElementById("escenaAR");
+            const estadoCarga = document.getElementById("estadoCarga");
 
             // =========================================================
-            // 1. Cargar datos de la ficha
+            // 1. Eventos de estado de cámara MindAR
+            // =========================================================
+            escenaEl.addEventListener("arReady", () => {
+                window.estadoAR.camaraLista = true;
+                window.estadoAR.actualizarBadge();
+            });
+
+            escenaEl.addEventListener("arError", (ev) => {
+                console.error("Error al iniciar MindAR:", ev);
+                estadoCarga.textContent = "⚠️ Permiso de cámara requerido";
+                estadoCarga.style.backgroundColor = "#8b0000";
+            });
+
+            // =========================================================
+            // 2. Cargar datos de la ficha
             // =========================================================
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
@@ -730,14 +780,13 @@
             }
 
             // =========================================================
-            // 2. Viewer: ajustar resolución del renderer (pixelRatio)
-            //    Tan pronto como A-Frame carga, forzamos un PR nítido.
+            // 3. Viewer: ajustar resolución del renderer (pixelRatio)
             // =========================================================
             function aplicarViewerPixelRatio() {
                 const renderer = escenaEl && escenaEl.renderer;
                 if (!renderer || typeof renderer.setPixelRatio !== 'function') return;
                 const dpr = window.devicePixelRatio || 1;
-                const target = Math.min(dpr, window.ficha.viewerPixelRatioMax || 2.5);
+                const target = Math.min(dpr, window.ficha.viewerPixelRatioMax || 2.0);
                 const current = (typeof renderer.getPixelRatio === 'function') ? renderer.getPixelRatio() : 1;
                 if (current < target) {
                     renderer.setPixelRatio(target);
@@ -751,7 +800,7 @@
             }
 
             // =========================================================
-            // 3. Ficha informativa
+            // 4. Ficha informativa
             // =========================================================
             const panelInferior = document.getElementById("panelInferior");
             const btnAbrirFicha = document.getElementById("btnAbrirFicha");
@@ -761,13 +810,12 @@
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
             // =========================================================
-            // 4. Detección con feedback visual
+            // 5. Detección con feedback visual
             // =========================================================
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
             const instruccionAR = document.getElementById("instruccionAR");
-            const estadoCarga = document.getElementById("estadoCarga");
 
             let timeoutOcultarUI = null;
 
@@ -797,11 +845,10 @@
             });
 
             // =========================================================
-            // 5. CAMBIO DE CÁMARA — robusto con fallback
+            // 6. CAMBIO DE CÁMARA — robusto con fallback
             // =========================================================
             const btnCambiarCamara = document.getElementById("btnCambiarCamara");
 
-            // Helper: reinicia el composite para que use rects frescos tras swap
             function invalidarRectsCompositor() {
                 const comp = escenaEl.components["compositor-ar"];
                 if (comp && typeof comp.invalidarRects === "function") comp.invalidarRects();
@@ -819,7 +866,6 @@
 
                 let ok = false;
 
-                // Intento 1: API oficial de MindAR
                 try {
                     const mindarSystem = escenaEl.systems["mindar-image-system"];
                     if (mindarSystem && typeof mindarSystem.switchCamera === "function") {
@@ -831,7 +877,6 @@
                     console.warn("[camera] switchCamera() falló:", err);
                 }
 
-                // Intento 2: fallback manual (parar tracks + pedir nuevo stream)
                 if (!ok) {
                     try {
                         const videos = document.querySelectorAll("video");
@@ -861,13 +906,10 @@
                 }
 
                 if (!ok) {
-                    // Revertir estado si no funcionó
                     window.modoCamaraActual = modoPrevio;
                     btnCambiarCamara.classList.toggle("girando");
                 } else {
-                    // Recalcular rects del composite (video puede haber cambiado orientación)
                     invalidarRectsCompositor();
-                    // Pequeño delay para que el nuevo stream se estabilice
                     setTimeout(invalidarRectsCompositor, 400);
                 }
 
@@ -878,7 +920,7 @@
             btnCambiarCamara.addEventListener("click", cambiarCamara);
 
             // =========================================================
-            // 6. Captura de FOTO
+            // 7. Captura de FOTO
             // =========================================================
             const btnFoto = document.getElementById("btnFoto");
             const flashPantalla = document.getElementById("flashPantalla");
@@ -886,11 +928,9 @@
             btnFoto.addEventListener("click", async () => {
                 if (window.capturadorAR.grabandoVideo) return;
 
-                // Flash visual
                 flashPantalla.style.opacity = "0.85";
                 setTimeout(() => { flashPantalla.style.opacity = "0"; }, 180);
 
-                // Boost temporal del renderer para que el modelo esté nítido
                 const renderer = escenaEl.renderer;
                 const originalPR = renderer ? renderer.getPixelRatio() : 1;
                 if (renderer) {
@@ -898,19 +938,17 @@
                     renderer.setPixelRatio(Math.max(originalPR, boost));
                 }
 
-                // Esperar 2 frames para que el canvas WebGL se redimensione
                 await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
                 window.capturadorAR.solicitarFoto = true;
 
-                // Restaurar el renderer tras la captura
                 setTimeout(() => {
                     if (renderer) renderer.setPixelRatio(originalPR);
                 }, 900);
             });
 
             // =========================================================
-            // 7. GRABACIÓN DE VIDEO HD
+            // 8. GRABACIÓN DE VIDEO HD
             // =========================================================
             const btnVideo = document.getElementById("btnVideo");
             const badgeTiempo = document.getElementById("badgeTiempo");
@@ -938,7 +976,6 @@
             }
 
             async function iniciarGrabacion() {
-                // Boost del renderer para que el modelo 3D se vea nítido a HD
                 const renderer = escenaEl.renderer;
                 originalPRForVideo = renderer ? renderer.getPixelRatio() : 1;
                 if (renderer) {
@@ -948,7 +985,6 @@
 
                 await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-                // Configurar canvas composite en HD
                 const compCanvas = window.capturadorAR.canvasCompuesto;
                 const vw = window.innerWidth || 720;
                 const vh = window.innerHeight || 960;
@@ -956,13 +992,11 @@
                 compCanvas.width = target.w;
                 compCanvas.height = target.h;
 
-                // Rects frescos para el composite
                 invalidarRectsCompositor();
 
                 window.capturadorAR.solicitarFoto = false;
                 window.capturadorAR.grabandoVideo = true;
 
-                // Primer frame
                 const comp = escenaEl.components["compositor-ar"];
                 if (comp) comp.dibujarFrame();
 
@@ -1007,7 +1041,6 @@
                     const seg = String(segundosGrabados % 60).padStart(2, "0");
                     textoTiempo.textContent = `${min}:${seg}`;
 
-                    // Auto-stop por seguridad
                     if (window.ficha.maxDuracionVideoSeg && segundosGrabados >= window.ficha.maxDuracionVideoSeg) {
                         detenerGrabacion();
                     }
@@ -1020,7 +1053,6 @@
                 btnVideo.classList.remove("grabando");
                 badgeTiempo.classList.remove("activo");
 
-                // Restaurar renderer tras detener
                 if (escenaEl.renderer && originalPRForVideo !== null) {
                     setTimeout(() => {
                         escenaEl.renderer.setPixelRatio(originalPRForVideo);
@@ -1053,7 +1085,7 @@
             });
 
             // =========================================================
-            // 8. Modal de vista previa, guardado y descarga
+            // 9. Modal de vista previa, guardado y descarga
             // =========================================================
             const modalPreview = document.getElementById("modalPreview");
             const contenedorMedia = document.getElementById("contenedorMedia");
