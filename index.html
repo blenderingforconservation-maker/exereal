@@ -16,13 +16,15 @@
             marcadorMind: "./targets/imagen_rastreo.mind",
             instagramUrl: "https://www.instagram.com/asteroidae9999/?hl=en",
 
-            // Escala base del modelo (3 veces la base 1.2 = 3.6)
-            escala: 3.6,
+            // Escala calibrada + auto-encuadre para que siempre se vea el modelo completo
+            escala: 2.2,
+            autoEncuadreEspacial: true,
+            margenPantalla: 0.82,          // Usa hasta el 82% del espacio AR visible sin cortarse
             rotacionInicial: "0 0 0",
 
-            // ===== Velocidad de Giro Más Lenta y Majestuosa =====
-            velocidadAnimacion: 0.38,      // Escala de tiempo del AnimationMixer (0.38 = giro pausado y fluido)
-            velocidadGiroRespaldo: 0.42,   // Radianes/seg si el GLB no trae pista o en modo respaldo
+            // ===== Velocidad de Animación Ágil y Fluida =====
+            velocidadAnimacion: 1.0,       // 1.0 = Velocidad nativa fluida y constante
+            velocidadGiroRespaldo: 0.95,   // Radianes/seg si el GLB no trae pista o en modo respaldo
 
             // ===== Acabado Negro Metalizado para el Tribal =====
             tribalColorHex: 0x101216,
@@ -30,14 +32,14 @@
             tribalRoughness: 0.22,
 
             // ===== Estabilidad de Seguimiento y Materialización =====
-            tiempoRetencionPerdidaMs: 4500, // Retiene el modelo 4.5s si se pierde momentáneamente el sticker
-            duracionMaterializacionMs: 1650,
-            duracionDesmaterializacionMs: 500,
-            suavizadoPose: 18.0,            // Seguimiento fluido del target en tiempo real
+            tiempoRetencionPerdidaMs: 5000,
+            duracionMaterializacionMs: 950,
+            duracionDesmaterializacionMs: 400,
+            suavizadoPose: 26.0,           // Respuesta rápida y sin lag al mover el teléfono
 
             // ===== Calidad de Captura Multimedia =====
             calidadFotoJPEG: 0.92,
-            bitrateVideo: 12000000,
+            bitrateVideo: 10000000,
             fpsVideo: 30,
             maxDuracionVideoSeg: 60,
 
@@ -54,7 +56,6 @@
             historia: "Pieza interactiva en Realidad Aumentada con seguimiento espacial del sticker, exploración táctil en 360° y materialización holográfica."
         };
 
-        // Forzar cámara trasera (environment) con resolución ágil de 720p a 30fps
         window.modoCamaraActual = "environment";
 
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -69,7 +70,7 @@
                             facingMode: { ideal: "environment" },
                             width: { ideal: window.ficha.camara.width },
                             height: { ideal: window.ficha.camara.height },
-                            frameRate: { ideal: 30, max: 30 }
+                            frameRate: { ideal: 30, max: 60 }
                         }
                     };
                 }
@@ -86,19 +87,19 @@
     <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 
     <!-- ===================================================== -->
-    <!-- 3. ESTILOS UI/UX — MODERNIDAD VIRTUAL (SPATIAL GLASS) -->
+    <!-- 3. ESTILOS UI/UX — ESPACIO AR 100% HABILITADO         -->
     <!-- ===================================================== -->
     <style>
         :root {
-            --spatial-bg: rgba(10, 14, 24, 0.56);
-            --spatial-bg-strong: rgba(12, 16, 28, 0.86);
+            --spatial-bg: rgba(10, 14, 24, 0.58);
+            --spatial-bg-strong: rgba(12, 16, 28, 0.88);
             --spatial-border: rgba(255, 255, 255, 0.16);
-            --spatial-highlight: rgba(0, 243, 255, 0.38);
+            --spatial-highlight: rgba(0, 243, 255, 0.42);
             --accent-cyan: #00f3ff;
             --accent-magenta: #ff2a75;
             --accent-mint: #00f5a0;
             --text-primary: #f4f8ff;
-            --text-secondary: rgba(244, 248, 255, 0.68);
+            --text-secondary: rgba(244, 248, 255, 0.72);
         }
 
         * {
@@ -110,8 +111,9 @@
         html, body {
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
             overflow: hidden;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: #05070d;
@@ -119,13 +121,32 @@
             touch-action: none;
         }
 
-        /* Viñeta espacial sutil para dar profundidad de visor AR */
+        /* Habilitar el 100% del espacio AR para A-Frame y el canvas WebGL sin recortes */
+        a-scene#escenaAR {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            z-index: 1;
+            overflow: visible !important;
+        }
+
+        a-scene#escenaAR .a-canvas {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+        }
+
+        /* Viñeta periférica ultraligera que no obstruye el área AR */
         .spatial-vignette {
             position: fixed;
             inset: 0;
             pointer-events: none;
             z-index: 110;
-            background: radial-gradient(circle at center, transparent 62%, rgba(4, 6, 14, 0.42) 100%);
+            background: radial-gradient(circle at center, transparent 76%, rgba(4, 6, 14, 0.32) 100%);
         }
 
         /* ===================================================== */
@@ -140,24 +161,24 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 16px;
-            padding-top: max(14px, env(safe-area-inset-top));
+            padding: 12px 14px;
+            padding-top: max(12px, env(safe-area-inset-top));
             pointer-events: none;
-            gap: 10px;
+            gap: 8px;
         }
 
         .status-pill {
             display: inline-flex;
             align-items: center;
-            gap: 9px;
+            gap: 8px;
             background: var(--spatial-bg);
             border: 1px solid var(--spatial-border);
-            padding: 8px 15px;
+            padding: 8px 13px;
             border-radius: 999px;
-            backdrop-filter: blur(20px) saturate(160%);
-            -webkit-backdrop-filter: blur(20px) saturate(160%);
-            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.14);
-            transition: all 0.35s ease;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            transition: border-color 0.3s ease;
         }
 
         .status-dot {
@@ -170,7 +191,7 @@
         }
 
         .status-pill.activo {
-            border-color: rgba(0, 245, 160, 0.42);
+            border-color: rgba(0, 245, 160, 0.45);
         }
         .status-pill.activo .status-dot {
             background: var(--accent-mint);
@@ -178,7 +199,7 @@
         }
 
         .status-pill.retencion {
-            border-color: rgba(255, 42, 117, 0.45);
+            border-color: rgba(255, 42, 117, 0.48);
         }
         .status-pill.retencion .status-dot {
             background: var(--accent-magenta);
@@ -186,7 +207,7 @@
         }
 
         #estadoCarga {
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 600;
             letter-spacing: 0.2px;
             color: var(--text-primary);
@@ -196,66 +217,65 @@
         .top-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 7px;
             pointer-events: auto;
         }
 
         .btn-spatial-pill {
-            height: 38px;
-            padding: 0 14px;
+            height: 36px;
+            padding: 0 12px;
             border-radius: 999px;
             background: var(--spatial-bg);
             color: var(--text-primary);
             border: 1px solid var(--spatial-border);
-            backdrop-filter: blur(20px) saturate(160%);
-            -webkit-backdrop-filter: blur(20px) saturate(160%);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 7px;
+            gap: 6px;
             text-decoration: none;
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s ease, background 0.25s ease;
+            transition: transform 0.18s ease, border-color 0.2s ease, background 0.2s ease;
         }
         .btn-spatial-pill:hover {
             border-color: var(--spatial-highlight);
-            background: rgba(18, 26, 44, 0.72);
+            background: rgba(18, 26, 44, 0.75);
         }
         .btn-spatial-pill:active {
             transform: scale(0.92);
         }
 
         .btn-ig-top svg {
-            width: 15px;
-            height: 15px;
+            width: 14px;
+            height: 14px;
             stroke: var(--accent-magenta);
-            filter: drop-shadow(0 0 6px rgba(255, 42, 117, 0.45));
             flex-shrink: 0;
         }
 
         #btnSimularAR {
-            border-color: rgba(0, 243, 255, 0.35);
+            border-color: rgba(0, 243, 255, 0.38);
             color: var(--accent-cyan);
         }
         #btnSimularAR.activo {
-            background: rgba(0, 245, 160, 0.16);
+            background: rgba(0, 245, 160, 0.18);
             border-color: var(--accent-mint);
             color: var(--accent-mint);
         }
 
         #btnAbrirFicha {
             display: none;
-            width: 38px;
+            width: 36px;
             padding: 0;
             font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         /* ===================================================== */
-        /* RETÍCULA DE ESCANEO ORGÁNICA (SIN TEXTO DEBAJO)       */
+        /* RETÍCULA DE ESCANEO SIN SOMBRA PESADA (FULL AR VIEW)  */
         /* ===================================================== */
         #ui-escaneo {
             position: fixed;
@@ -265,23 +285,22 @@
             align-items: center;
             z-index: 150;
             pointer-events: none;
-            transition: opacity 0.45s ease, transform 0.45s ease;
+            transition: opacity 0.35s ease;
         }
 
         .marco-escaner {
-            width: 60vw;
-            max-width: 220px;
-            height: 60vw;
-            max-height: 220px;
+            width: 62vw;
+            max-width: 240px;
+            height: 62vw;
+            max-height: 240px;
             border-radius: 50%;
             position: relative;
-            border: 1.5px solid rgba(0, 243, 255, 0.36);
-            background: radial-gradient(circle, rgba(0, 243, 255, 0.05) 0%, transparent 72%);
-            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.24), inset 0 0 28px rgba(0, 243, 255, 0.12);
+            border: 1.5px solid rgba(0, 243, 255, 0.38);
+            background: radial-gradient(circle, rgba(0, 243, 255, 0.04) 0%, transparent 70%);
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), border-color 0.35s ease, box-shadow 0.35s ease;
+            transition: transform 0.35s ease, border-color 0.3s ease;
         }
 
         .marco-escaner::before {
@@ -289,14 +308,13 @@
             position: absolute;
             inset: -8px;
             border-radius: 50%;
-            border: 1px dashed rgba(255, 255, 255, 0.18);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
             animation: giroOrbita 18s linear infinite;
         }
 
         .marco-escaner.detectado {
             border-color: rgba(0, 245, 160, 0.85);
-            transform: scale(1.08);
-            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.08), 0 0 36px rgba(0, 245, 160, 0.42);
+            transform: scale(1.06);
         }
 
         .linea-escaner {
@@ -304,8 +322,8 @@
             height: 2px;
             border-radius: 999px;
             background: linear-gradient(90deg, transparent, var(--accent-cyan), var(--accent-magenta), transparent);
-            box-shadow: 0 0 14px var(--accent-cyan);
-            animation: pulsoOrganico 2.4s infinite ease-in-out;
+            box-shadow: 0 0 12px var(--accent-cyan);
+            animation: pulsoOrganico 2.2s infinite ease-in-out;
             transition: opacity 0.25s ease;
         }
         .marco-escaner.detectado .linea-escaner {
@@ -327,24 +345,23 @@
         /* ===================================================== */
         #hintExploracion {
             position: fixed;
-            bottom: max(112px, calc(96px + env(safe-area-inset-bottom)));
+            bottom: max(108px, calc(94px + env(safe-area-inset-bottom)));
             left: 50%;
             transform: translateX(-50%) translateY(8px);
             z-index: 260;
             pointer-events: none;
             background: var(--spatial-bg);
             border: 1px solid var(--spatial-border);
-            padding: 7px 16px;
+            padding: 7px 15px;
             border-radius: 999px;
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            font-size: 11.5px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            font-size: 11px;
             font-weight: 500;
             color: var(--text-secondary);
             white-space: nowrap;
             opacity: 0;
-            transition: opacity 0.45s ease, transform 0.45s ease;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            transition: opacity 0.4s ease, transform 0.4s ease;
         }
         #hintExploracion.visible {
             opacity: 1;
@@ -352,12 +369,12 @@
         }
 
         /* ===================================================== */
-        /* DOCK DE CAPTURA SPATIAL GLASS (SOLO FOTO Y VIDEO)     */
+        /* DOCK DE CAPTURA SPATIAL GLASS (FOTO Y VIDEO)          */
         /* ===================================================== */
         .contenedor-controles {
             position: fixed;
-            bottom: 24px;
-            bottom: max(24px, env(safe-area-inset-bottom));
+            bottom: 22px;
+            bottom: max(22px, env(safe-area-inset-bottom));
             left: 50%;
             transform: translateX(-50%);
             z-index: 280;
@@ -371,7 +388,7 @@
             display: none;
             align-items: center;
             gap: 7px;
-            background: rgba(20, 8, 18, 0.8);
+            background: rgba(20, 8, 18, 0.84);
             color: #ffffff;
             border: 1px solid rgba(255, 42, 117, 0.55);
             font-size: 12px;
@@ -379,8 +396,6 @@
             letter-spacing: 0.8px;
             padding: 5px 14px;
             border-radius: 999px;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
         }
         #badgeTiempo.activo {
             display: flex;
@@ -407,9 +422,9 @@
             border: 1px solid var(--spatial-border);
             padding: 10px 26px;
             border-radius: 999px;
-            backdrop-filter: blur(22px) saturate(180%);
-            -webkit-backdrop-filter: blur(22px) saturate(180%);
-            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
         }
 
         .dock-divider {
@@ -435,54 +450,50 @@
             align-items: center;
             justify-content: center;
             touch-action: manipulation;
-            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
+            transition: transform 0.18s ease;
         }
         .btn-icono:active {
             transform: scale(0.88);
         }
 
         #btnFoto {
-            width: 56px;
-            height: 56px;
+            width: 54px;
+            height: 54px;
             border-radius: 50%;
             border: 2px solid rgba(0, 243, 255, 0.82);
             background: rgba(0, 243, 255, 0.12);
-            box-shadow: 0 0 18px rgba(0, 243, 255, 0.2);
         }
         .nucleo-foto {
-            width: 44px;
-            height: 44px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             background: linear-gradient(135deg, #ffffff 0%, #c4faff 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: #07101e;
-            box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.15);
         }
 
         #btnVideo {
-            width: 56px;
-            height: 56px;
+            width: 54px;
+            height: 54px;
             border-radius: 50%;
             border: 2px solid rgba(255, 42, 117, 0.82);
             background: rgba(255, 42, 117, 0.12);
-            box-shadow: 0 0 18px rgba(255, 42, 117, 0.2);
         }
         .nucleo-video {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             background: linear-gradient(135deg, #ff2a75 0%, #ff639b 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: #ffffff;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.22s ease;
         }
         #btnVideo.grabando {
             border-color: var(--accent-cyan);
-            box-shadow: 0 0 24px rgba(0, 243, 255, 0.45);
         }
         #btnVideo.grabando .nucleo-video {
             width: 22px;
@@ -500,7 +511,7 @@
             opacity: 0;
             pointer-events: none;
             z-index: 500;
-            transition: opacity 0.22s ease;
+            transition: opacity 0.2s ease;
         }
 
         /* ===================================================== */
@@ -509,9 +520,9 @@
         #modalPreview {
             position: fixed;
             inset: 0;
-            background: rgba(4, 7, 15, 0.82);
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
+            background: rgba(4, 7, 15, 0.84);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             z-index: 600;
             display: none;
             flex-direction: column;
@@ -526,12 +537,12 @@
         .tarjeta-preview {
             background: var(--spatial-bg-strong);
             border: 1px solid var(--spatial-border);
-            border-radius: 26px;
+            border-radius: 24px;
             padding: 18px;
             width: 100%;
             max-width: 380px;
             color: var(--text-primary);
-            box-shadow: 0 22px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            box-shadow: 0 22px 50px rgba(0, 0, 0, 0.65);
             text-align: center;
         }
 
@@ -557,7 +568,7 @@
         .contenedor-media {
             width: 100%;
             max-height: 55vh;
-            border-radius: 18px;
+            border-radius: 16px;
             overflow: hidden;
             background: #000000;
             margin-bottom: 14px;
@@ -616,14 +627,14 @@
             width: 100%;
             max-width: 560px;
             background: var(--spatial-bg-strong);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
             border-top: 1px solid var(--spatial-border);
             border-radius: 26px 26px 0 0;
             padding: 22px 24px 30px;
             z-index: 400;
             box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
-            transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
             max-height: 80vh;
             overflow-y: auto;
             color: var(--text-primary);
@@ -725,14 +736,13 @@
     </style>
 
     <!-- ===================================================== -->
-    <!-- 4. MOTOR AR: CACHÉ + COMPOSITOR + EXPLORACIÓN 360°    -->
+    <!-- 4. MOTOR AR: FRUSTUM EXPANDIDO + AUTO-FIT + 60 FPS    -->
     <!-- ===================================================== -->
     <script>
-        // Helper de Caché local para ahorrar datos móviles en visitas repetidas
         async function obtenerUrlConCache(url) {
             if (!('caches' in window)) return url;
             try {
-                const cache = await caches.open('torimask-ar-cache-v1');
+                const cache = await caches.open('torimask-ar-cache-v2');
                 let response = await cache.match(url);
                 if (!response) {
                     response = await fetch(url, { cache: 'force-cache' });
@@ -773,7 +783,8 @@
         };
 
         // ============================================================
-        // COMPOSITOR: une cámara + 3D únicamente al tomar foto o video
+        // COMPOSITOR: une cámara + 3D en `tock` (justo tras WebGL render)
+        // sin requerir preserveDrawingBuffer permanente
         // ============================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
@@ -816,7 +827,7 @@
                 if (!window.capturadorAR.solicitarFoto && !window.capturadorAR.grabandoVideo) return;
 
                 if (window.capturadorAR.grabandoVideo) {
-                    if (time - this._lastDrawTime < 33) return;
+                    if (time - this._lastDrawTime < 32) return;
                     this._lastDrawTime = time;
                 }
 
@@ -877,8 +888,8 @@
         });
 
         // ============================================================
-        // COMPONENTE PRINCIPAL: SEGUIMIENTO DEL TARGET + GIRO LENTO +
-        // EXPLORACIÓN TÁCTIL 360° + TRIBAL NEGRO METALIZADO
+        // COMPONENTE PRINCIPAL: SIN PLANOS DE CORTE + FRUSTUM COMPLETO
+        // + AUTO-ENCUADRE ESPACIAL + VELOCIDAD NATIVA FLUIDA
         // ============================================================
         AFRAME.registerComponent('modelo-cyberpunk-ar', {
             init: function () {
@@ -907,18 +918,16 @@
                 this.targetRotUsuarioX = 0;
                 this.escalaUsuario = 1.0;
                 this.targetEscalaUsuario = 1.0;
+                this.factorAutoFit = 1.0;
                 this.anguloGiroLento = 0;
 
-                this.minYLocal = -1.8;
-                this.maxYLocal = 1.8;
+                this.minYLocal = -1.1;
+                this.maxYLocal = 1.1;
+                this.radioModeloLocal = 1.1;
 
                 this._tPos = new THREE.Vector3();
                 this._tQuat = new THREE.Quaternion();
                 this._tScale = new THREE.Vector3();
-                this._planeNormal = new THREE.Vector3();
-                this._planePoint = new THREE.Vector3();
-                // Plano de corte persistente sin recompilación de shaders
-                this.planoCorte = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
 
                 const el = this.el;
                 const anclaEstable = document.getElementById('anclaEstableAR');
@@ -930,9 +939,10 @@
                 this.targetObj = targetEl.object3D;
                 this.anclaObj.visible = false;
 
+                // Desactivar localClippingEnabled y sombras para máxima velocidad en GPU móvil
                 const configurarRenderer = () => {
                     if (el.sceneEl && el.sceneEl.renderer) {
-                        el.sceneEl.renderer.localClippingEnabled = true;
+                        el.sceneEl.renderer.localClippingEnabled = false;
                         el.sceneEl.renderer.shadowMap.enabled = false;
                     }
                 };
@@ -943,30 +953,33 @@
                 const crearAnilloEscaner = (radio) => {
                     const group = new THREE.Group();
 
-                    const geoRing = new THREE.RingGeometry(radio * 0.8, radio * 0.98, 36);
+                    const geoRing = new THREE.RingGeometry(radio * 0.82, radio * 0.98, 40);
                     geoRing.rotateX(-Math.PI / 2);
                     const matRing = new THREE.MeshBasicMaterial({
                         color: 0x00f3ff,
                         side: THREE.DoubleSide,
                         transparent: true,
-                        opacity: 0.82,
+                        opacity: 0.85,
                         blending: THREE.AdditiveBlending,
-                        depthWrite: false
+                        depthWrite: false,
+                        depthTest: false
                     });
 
-                    const geoGlow = new THREE.RingGeometry(radio * 0.45, radio * 0.8, 36);
+                    const geoGlow = new THREE.RingGeometry(radio * 0.45, radio * 0.82, 40);
                     geoGlow.rotateX(-Math.PI / 2);
                     const matGlow = new THREE.MeshBasicMaterial({
                         color: 0xff2a75,
                         side: THREE.DoubleSide,
                         transparent: true,
-                        opacity: 0.25,
+                        opacity: 0.28,
                         blending: THREE.AdditiveBlending,
-                        depthWrite: false
+                        depthWrite: false,
+                        depthTest: false
                     });
 
                     group.add(new THREE.Mesh(geoRing, matRing));
                     group.add(new THREE.Mesh(geoGlow, matGlow));
+                    group.renderOrder = 10;
                     group.visible = false;
                     return group;
                 };
@@ -989,8 +1002,6 @@
 
                 // ============================================================
                 // MODELO 3D PROCEDURAL DE RESPALDO (PARA EL VISUALIZADOR LIVE)
-                // Si ./models/giro-torimask-opt.glb no existe en el sandbox,
-                // construye la esfera + Tribal Negro Metalizado + Tori Mask
                 // ============================================================
                 const construirModeloRespaldoProcedural = () => {
                     const root = new THREE.Group();
@@ -1002,7 +1013,7 @@
                         metalness: window.ficha.tribalMetalness ?? 0.85,
                         roughness: window.ficha.tribalRoughness ?? 0.22,
                         side: THREE.DoubleSide,
-                        clippingPlanes: [this.planoCorte]
+                        depthWrite: true
                     });
                     matTribal.userData.origEmissive = matTribal.emissive.clone();
                     matTribal.userData.origEmissiveIntensity = 1.0;
@@ -1011,31 +1022,33 @@
                     const grupoTribal = new THREE.Group();
                     grupoTribal.name = "tribal_inner_sigil";
 
-                    // Cuernos simétricos cyber-sigil + núcleo tribal
                     const geoCuerno = new THREE.TorusGeometry(0.42, 0.055, 16, 48, Math.PI * 1.15);
                     const cuernoIzq = new THREE.Mesh(geoCuerno, matTribal);
                     cuernoIzq.position.set(-0.22, 0.18, 0);
                     cuernoIzq.rotation.set(0.15, 0.2, 0.85);
+                    cuernoIzq.renderOrder = 1;
 
                     const cuernoDer = new THREE.Mesh(geoCuerno, matTribal);
                     cuernoDer.position.set(0.22, 0.18, 0);
                     cuernoDer.rotation.set(0.15, -0.2, 2.29);
+                    cuernoDer.renderOrder = 1;
 
                     const geoNudo = new THREE.TorusKnotGeometry(0.28, 0.042, 80, 16, 2, 3);
                     const nudoCentral = new THREE.Mesh(geoNudo, matTribal);
                     nudoCentral.scale.set(1.0, 1.35, 0.55);
+                    nudoCentral.renderOrder = 1;
 
                     grupoTribal.add(cuernoIzq, cuernoDer, nudoCentral);
                     root.add(grupoTribal);
 
-                    // 2. Acentos Oni / Tori Mask en rojo carmesí y dorado original
+                    // 2. Acentos Oni / Tori Mask en rojo carmesí
                     const matMascara = new THREE.MeshStandardMaterial({
                         name: "torimask_crimson",
                         color: 0xc81e32,
                         metalness: 0.35,
                         roughness: 0.32,
                         side: THREE.DoubleSide,
-                        clippingPlanes: [this.planoCorte]
+                        depthWrite: true
                     });
                     matMascara.userData.origEmissive = matMascara.emissive.clone();
                     matMascara.userData.origEmissiveIntensity = 1.0;
@@ -1044,21 +1057,22 @@
                     const geoAnilloMascara = new THREE.TorusGeometry(0.56, 0.025, 16, 64);
                     const aro1 = new THREE.Mesh(geoAnilloMascara, matMascara);
                     aro1.rotation.x = Math.PI / 3;
+                    aro1.renderOrder = 1;
                     const aro2 = new THREE.Mesh(geoAnilloMascara, matMascara);
                     aro2.rotation.y = Math.PI / 3;
+                    aro2.renderOrder = 1;
                     root.add(aro1, aro2);
 
-                    // 3. Esfera exterior cristalina
+                    // 3. Esfera exterior cristalina (depthWrite: false + renderOrder: 2 para no cortar el interior)
                     const matEsfera = new THREE.MeshStandardMaterial({
                         name: "outer_sphere_mask",
                         color: 0xd8f4ff,
                         metalness: 0.2,
                         roughness: 0.12,
                         transparent: true,
-                        opacity: 0.24,
+                        opacity: 0.22,
                         depthWrite: false,
-                        side: THREE.DoubleSide,
-                        clippingPlanes: [this.planoCorte]
+                        side: THREE.FrontSide
                     });
                     matEsfera.userData.origEmissive = matEsfera.emissive.clone();
                     matEsfera.userData.origEmissiveIntensity = 1.0;
@@ -1066,15 +1080,17 @@
 
                     const geoEsfera = new THREE.SphereGeometry(0.68, 36, 36);
                     const meshEsfera = new THREE.Mesh(geoEsfera, matEsfera);
+                    meshEsfera.renderOrder = 2;
                     root.add(meshEsfera);
 
-                    const escalaObjetivo = window.ficha.escala || 3.6;
-                    root.scale.setScalar(escalaObjetivo * 0.55);
+                    const escalaObjetivo = window.ficha.escala || 2.2;
+                    root.scale.setScalar(escalaObjetivo * 0.65);
 
-                    this.minYLocal = -escalaObjetivo * 0.58;
-                    this.maxYLocal = escalaObjetivo * 0.58;
+                    this.radioModeloLocal = escalaObjetivo * 0.55;
+                    this.minYLocal = -this.radioModeloLocal;
+                    this.maxYLocal = this.radioModeloLocal;
 
-                    this.anilloEscaner = crearAnilloEscaner(escalaObjetivo * 0.52);
+                    this.anilloEscaner = crearAnilloEscaner(this.radioModeloLocal);
                     el.object3D.add(this.anilloEscaner);
 
                     this.grupoExploracion.add(root);
@@ -1083,8 +1099,6 @@
                     this.giroRespaldo = true;
 
                     if (estadoUI) estadoUI.textContent = "Listo para escanear";
-                    const btnSim = document.getElementById('btnSimularAR');
-                    if (btnSim) btnSim.style.display = "inline-flex";
                 };
 
                 const cargarGLB = async () => {
@@ -1105,71 +1119,105 @@
                         modelUrl,
                         (gltf) => {
                             const model = gltf.scene;
-
-                            // 1. Inicializar animaciones en loop infinito con velocidad más lenta (0.38x)
-                            if (gltf.animations && gltf.animations.length > 0) {
-                                this.mixer = new THREE.AnimationMixer(model);
-                                this.mixer.timeScale = window.ficha.velocidadAnimacion ?? 0.38;
-                                gltf.animations.forEach((clip) => {
-                                    const action = this.mixer.clipAction(clip);
-                                    action.setLoop(THREE.LoopRepeat, Infinity);
-                                    action.play();
-                                    this.actions.push(action);
-                                });
-                                this.mixer.update(0);
-                            } else {
-                                this.giroRespaldo = true;
-                            }
-
-                            // 2. Contar mallas y medir Bounding Box
-                            model.updateMatrixWorld(true);
-                            const boxGlobal = new THREE.Box3();
                             const listaNodos = [];
 
                             model.traverse((node) => {
                                 if (node.isMesh) {
                                     node.frustumCulled = false;
-                                    boxGlobal.expandByObject(node);
                                     listaNodos.push(node);
                                 }
                             });
 
+                            // 1. Medir Bounding Box en pose base y a lo largo de la animación
+                            // para garantizar que ningún giro o expansión se salga del espacio AR
+                            model.updateMatrixWorld(true);
+                            const boxGlobal = new THREE.Box3();
+                            listaNodos.forEach((n) => boxGlobal.expandByObject(n));
+
+                            if (gltf.animations && gltf.animations.length > 0) {
+                                this.mixer = new THREE.AnimationMixer(model);
+                                this.mixer.timeScale = window.ficha.velocidadAnimacion ?? 1.0;
+
+                                let maxDur = 0;
+                                gltf.animations.forEach((clip) => {
+                                    if (clip.duration > maxDur) maxDur = clip.duration;
+                                    const action = this.mixer.clipAction(clip);
+                                    action.setLoop(THREE.LoopRepeat, Infinity);
+                                    action.play();
+                                    this.actions.push(action);
+                                });
+
+                                // Muestrear 4 instantes del ciclo de animación para cubrir el volumen completo
+                                if (maxDur > 0) {
+                                    const muestras = [0, maxDur * 0.25, maxDur * 0.5, maxDur * 0.75];
+                                    for (let i = 0; i < muestras.length; i++) {
+                                        this.mixer.setTime(muestras[i]);
+                                        model.updateMatrixWorld(true);
+                                        listaNodos.forEach((n) => boxGlobal.expandByObject(n));
+                                    }
+                                }
+                                this.mixer.setTime(0);
+                                model.updateMatrixWorld(true);
+                            } else {
+                                this.giroRespaldo = true;
+                            }
+
                             if (boxGlobal.isEmpty()) boxGlobal.setFromObject(model);
 
-                            // 3. Configurar materiales manteniendo intactos los colores originales
-                            // y aplicando negro metalizado al tribal interior
+                            // 2. Configurar materiales SIN planos de corte y ordenando transparencia
+                            // para que la esfera exterior nunca recorte el tribal o la máscara interior
                             const materialesVistos = new Set();
 
                             listaNodos.forEach((node) => {
                                 const origMats = Array.isArray(node.material) ? node.material : [node.material];
+                                let nodoEsTransparente = false;
+
                                 origMats.forEach((mat) => {
-                                    if (!mat || materialesVistos.has(mat)) return;
-                                    materialesVistos.add(mat);
+                                    if (!mat) return;
+                                    const esTribal = esMallaTribal(node, mat, listaNodos.length);
+                                    const etiqueta = ((node.name || "") + " " + (mat.name || "")).toLowerCase();
+                                    const esEsferaCristal = /sphere|esfera|glass|orb|outer/i.test(etiqueta);
 
-                                    mat.side = THREE.DoubleSide;
-                                    mat.clippingPlanes = [this.planoCorte];
+                                    if (!materialesVistos.has(mat)) {
+                                        materialesVistos.add(mat);
+                                        mat.clippingPlanes = null;
 
-                                    if (esMallaTribal(node, mat, listaNodos.length)) {
-                                        if (mat.color) mat.color.setHex(window.ficha.tribalColorHex ?? 0x101216);
-                                        if ('metalness' in mat) mat.metalness = window.ficha.tribalMetalness ?? 0.85;
-                                        if ('roughness' in mat) mat.roughness = window.ficha.tribalRoughness ?? 0.22;
-                                        mat.transparent = false;
-                                        mat.opacity = 1.0;
-                                        mat.depthWrite = true;
+                                        if (esTribal) {
+                                            if (mat.color) mat.color.setHex(window.ficha.tribalColorHex ?? 0x101216);
+                                            if ('metalness' in mat) mat.metalness = window.ficha.tribalMetalness ?? 0.85;
+                                            if ('roughness' in mat) mat.roughness = window.ficha.tribalRoughness ?? 0.22;
+                                            mat.transparent = false;
+                                            mat.opacity = 1.0;
+                                            mat.depthWrite = true;
+                                            mat.side = THREE.DoubleSide;
+                                        } else if (mat.transparent || (mat.opacity !== undefined && mat.opacity < 0.98) || esEsferaCristal) {
+                                            // Evita que la esfera o capas translúcidas escriban en el Z-buffer y corten el interior
+                                            mat.depthWrite = false;
+                                            mat.side = THREE.FrontSide;
+                                            nodoEsTransparente = true;
+                                        } else {
+                                            mat.depthWrite = true;
+                                            mat.side = THREE.DoubleSide;
+                                        }
+
+                                        if (mat.emissive) {
+                                            mat.userData.origEmissive = mat.emissive.clone();
+                                            mat.userData.origEmissiveIntensity = mat.emissiveIntensity ?? 1.0;
+                                        }
+                                        mat.needsUpdate = true;
+                                        this.materialesAnimables.push(mat);
+                                    } else if (mat.transparent || !mat.depthWrite) {
+                                        nodoEsTransparente = true;
                                     }
-
-                                    if (mat.emissive) {
-                                        mat.userData.origEmissive = mat.emissive.clone();
-                                        mat.userData.origEmissiveIntensity = mat.emissiveIntensity ?? 1.0;
-                                    }
-                                    mat.needsUpdate = true;
-                                    this.materialesAnimables.push(mat);
                                 });
+
+                                node.renderOrder = nodoEsTransparente ? 2 : 1;
                             });
 
+                            // 3. Centrar en la esfera envolvente diagonal para que al girar 360° nunca se recorte
                             const size = boxGlobal.getSize(new THREE.Vector3());
                             const center = boxGlobal.getCenter(new THREE.Vector3());
-                            const maxDim = Math.max(size.x, size.y, size.z);
+                            const diagonalBounding = Math.max(size.length() * 0.72, Math.max(size.x, size.y, size.z));
 
                             const pivotGroup = new THREE.Group();
                             const offsetGroup = new THREE.Group();
@@ -1177,19 +1225,20 @@
                             offsetGroup.add(model);
                             pivotGroup.add(offsetGroup);
 
-                            const escalaObjetivo = window.ficha.escala || 3.6;
-                            if (Number.isFinite(maxDim) && maxDim > 0.0001) {
-                                const factor = escalaObjetivo / maxDim;
+                            const escalaObjetivo = window.ficha.escala || 2.2;
+                            if (Number.isFinite(diagonalBounding) && diagonalBounding > 0.0001) {
+                                const factor = escalaObjetivo / diagonalBounding;
                                 offsetGroup.position.set(-center.x, -center.y, -center.z);
                                 pivotGroup.scale.setScalar(factor);
                             } else {
                                 pivotGroup.scale.setScalar(escalaObjetivo);
                             }
 
-                            this.minYLocal = -escalaObjetivo * 0.58;
-                            this.maxYLocal = escalaObjetivo * 0.58;
+                            this.radioModeloLocal = escalaObjetivo * 0.55;
+                            this.minYLocal = -this.radioModeloLocal;
+                            this.maxYLocal = this.radioModeloLocal;
 
-                            this.anilloEscaner = crearAnilloEscaner(escalaObjetivo * 0.52);
+                            this.anilloEscaner = crearAnilloEscaner(this.radioModeloLocal);
                             el.object3D.add(this.anilloEscaner);
 
                             this.grupoExploracion.add(pivotGroup);
@@ -1200,8 +1249,6 @@
                         },
                         undefined,
                         () => {
-                            // Si se ejecuta en el visualizador de código sin el archivo local .glb,
-                            // activa automáticamente el modelo 3D procedural interactivo
                             construirModeloRespaldoProcedural();
                         }
                     );
@@ -1231,7 +1278,6 @@
                     if (this.estado === 'OCULTO' || esElementoUI(e.target)) return;
                     const ahora = performance.now();
                     if (ahora - ultimoTap < 280) {
-                        // Doble toque: restablecer vista original
                         this.targetRotUsuarioY = 0;
                         this.targetRotUsuarioX = 0;
                         this.targetEscalaUsuario = 1.0;
@@ -1249,18 +1295,17 @@
                     prevX = e.clientX;
                     prevY = e.clientY;
 
-                    this.targetRotUsuarioY += dx * 0.0085;
+                    this.targetRotUsuarioY += dx * 0.009;
                     this.targetRotUsuarioX = THREE.MathUtils.clamp(
-                        this.targetRotUsuarioX + dy * 0.0065,
-                        -Math.PI * 0.42,
-                        Math.PI * 0.42
+                        this.targetRotUsuarioX + dy * 0.007,
+                        -Math.PI * 0.46,
+                        Math.PI * 0.46
                     );
                 }, { passive: true });
 
                 window.addEventListener('pointerup', () => { arrastrando = false; }, { passive: true });
                 window.addEventListener('pointercancel', () => { arrastrando = false; }, { passive: true });
 
-                // Pellizco con 2 dedos para zoom en móviles
                 window.addEventListener('touchstart', (e) => {
                     if (this.estado === 'OCULTO') return;
                     if (e.touches.length === 2) {
@@ -1280,36 +1325,36 @@
                         e.touches[0].clientY - e.touches[1].clientY
                     );
                     const factor = distActual / distPinchInicial;
-                    this.targetEscalaUsuario = THREE.MathUtils.clamp(escalaPinchInicial * factor, 0.5, 2.4);
+                    this.targetEscalaUsuario = THREE.MathUtils.clamp(escalaPinchInicial * factor, 0.35, 2.5);
                 }, { passive: true });
 
-                // Rueda del mouse para zoom en el visualizador de escritorio
                 window.addEventListener('wheel', (e) => {
                     if (this.estado === 'OCULTO' || esElementoUI(e.target)) return;
                     this.targetEscalaUsuario = THREE.MathUtils.clamp(
                         this.targetEscalaUsuario - e.deltaY * 0.0012,
-                        0.5,
-                        2.4
+                        0.35,
+                        2.5
                     );
                 }, { passive: true });
 
                 // ============================================================
-                // ACTIVACIÓN POR TARGET DE MINDAR O SIMULADOR DEL VISUALIZADOR
+                // ACTIVACIÓN POR TARGET DE MINDAR O MODO VISTA 3D COMPLETA
                 // ============================================================
                 this.activarTarget = (esSimulacion = false) => {
                     this.rastreandoEnVivo = !esSimulacion;
                     this.simulandoPreview = esSimulacion;
                     this.anclaObj.visible = true;
 
-                    if (esSimulacion && !this.poseInicializada) {
-                        this.anclaObj.position.set(0, 0, -3.2);
+                    if (esSimulacion) {
+                        // Coloca el modelo centrado frente a la cámara aprovechando todo el espacio AR
+                        this.anclaObj.position.set(0, 0, -3.4);
                         this.anclaObj.quaternion.identity();
-                        this.anclaObj.scale.setScalar(0.52);
+                        this.anclaObj.scale.setScalar(1.0);
                         this.poseInicializada = true;
                     }
 
                     if (this.mixer && this.actions.length > 0) {
-                        this.mixer.timeScale = window.ficha.velocidadAnimacion ?? 0.38;
+                        this.mixer.timeScale = window.ficha.velocidadAnimacion ?? 1.0;
                         this.actions.forEach(a => {
                             a.paused = false;
                             a.play();
@@ -1328,13 +1373,19 @@
                         statusPill.classList.remove('retencion');
                         statusPill.classList.add('activo');
                     }
-                    if (estadoUI) estadoUI.textContent = "Conectado · Explorable 360°";
+                    if (estadoUI) {
+                        estadoUI.textContent = esSimulacion
+                            ? "Espacio AR 360° Activo"
+                            : "Conectado · Explorable 360°";
+                    }
                     if (window.mostrarHintExploracionUI) window.mostrarHintExploracionUI();
                 };
 
                 this.perderTarget = (inmediato = false) => {
                     this.rastreandoEnVivo = false;
+                    if (this.simulandoPreview && !inmediato) return;
                     this.simulandoPreview = false;
+
                     if (this.estado !== 'OCULTO') {
                         if (inmediato) {
                             this.estado = 'DESMATERIALIZANDO';
@@ -1355,10 +1406,29 @@
                 targetEl.addEventListener('targetLost', () => this.perderTarget(false));
             },
 
+            // Expande el frustum (near=0.05, far=500000) conservando el FOV exacto de MindAR
+            ampliarFrustumCamara: function () {
+                const sceneEl = this.el.sceneEl;
+                if (!sceneEl || !sceneEl.camera) return null;
+                const cam = sceneEl.camera;
+                const near = 0.05;
+                const far = 500000;
+                cam.near = near;
+                cam.far = far;
+
+                const p = cam.projectionMatrix && cam.projectionMatrix.elements;
+                if (p && p[0] !== 0) {
+                    p[10] = -(far + near) / (far - near);
+                    p[14] = -(2 * far * near) / (far - near);
+                    if (cam.projectionMatrixInverse) {
+                        cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+                    }
+                }
+                return p;
+            },
+
             restaurarColoresOriginales: function () {
                 if (this.anilloEscaner) this.anilloEscaner.visible = false;
-                this.planoCorte.constant = 1000;
-
                 for (let i = 0; i < this.materialesAnimables.length; i++) {
                     const mat = this.materialesAnimables[i];
                     if (mat.emissive && mat.userData.origEmissive) {
@@ -1371,7 +1441,7 @@
             actualizarEfectoMaterializacion: function (delta) {
                 const THREE = AFRAME.THREE;
                 if (this.estado === 'MATERIALIZANDO') {
-                    const dur = (window.ficha.duracionMaterializacionMs || 1650) / 1000;
+                    const dur = (window.ficha.duracionMaterializacionMs || 950) / 1000;
                     this.progresoMat = Math.min(1.0, this.progresoMat + delta / dur);
                     if (this.progresoMat >= 1.0) {
                         this.estado = 'ACTIVO';
@@ -1379,7 +1449,7 @@
                         return;
                     }
                 } else if (this.estado === 'DESMATERIALIZANDO') {
-                    const dur = (window.ficha.duracionDesmaterializacionMs || 500) / 1000;
+                    const dur = (window.ficha.duracionDesmaterializacionMs || 400) / 1000;
                     this.progresoMat = Math.max(0.0, this.progresoMat - delta / dur);
                     if (this.progresoMat <= 0.0) {
                         this.estado = 'OCULTO';
@@ -1394,22 +1464,16 @@
                 }
 
                 const t = this.progresoMat;
-                const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+                const ease = 1 - Math.pow(1 - t, 3);
                 const alturaLocal = THREE.MathUtils.lerp(this.minYLocal, this.maxYLocal, ease);
 
                 if (this.anilloEscaner) {
                     this.anilloEscaner.visible = true;
                     this.anilloEscaner.position.set(0, alturaLocal, 0);
-                    this.anilloEscaner.rotation.y += delta * 2.4;
-
-                    this.el.object3D.updateMatrixWorld(true);
-                    this.anilloEscaner.getWorldPosition(this._planePoint);
-
-                    this._planeNormal.set(0, -1, 0).transformDirection(this.el.object3D.matrixWorld).normalize();
-                    this.planoCorte.setFromNormalAndCoplanarPoint(this._planeNormal, this._planePoint);
+                    this.anilloEscaner.rotation.y += delta * 3.2;
                 }
 
-                const pulso = Math.sin(t * Math.PI) * 0.42;
+                const pulso = Math.sin(t * Math.PI) * 0.45;
                 for (let i = 0; i < this.materialesAnimables.length; i++) {
                     const mat = this.materialesAnimables[i];
                     if (mat.emissive && mat.userData.origEmissive) {
@@ -1425,14 +1489,15 @@
             },
 
             tick: function (time, timeDelta) {
+                const proj = this.ampliarFrustumCamara();
                 if (this.estado === 'OCULTO') return;
 
                 const rawDelta = Math.min(Math.max((timeDelta || 16.6) * 0.001, 0.001), 0.04);
-                this.smoothDelta += (rawDelta - this.smoothDelta) * 0.25;
+                this.smoothDelta += (rawDelta - this.smoothDelta) * 0.3;
                 const delta = this.smoothDelta;
                 this.relojPulso += delta;
 
-                // 1. Seguir suavemente al target de MindAR cuando está visible en cámara
+                // 1. Seguir al target de MindAR cuando está visible en cámara
                 if (this.rastreandoEnVivo && this.targetObj.visible) {
                     const mat = this.targetObj.matrix;
                     if (mat && mat.elements[15] !== 0) {
@@ -1444,7 +1509,7 @@
                                 this.anclaObj.scale.copy(this._tScale);
                                 this.poseInicializada = true;
                             } else {
-                                const k = window.ficha.suavizadoPose || 18.0;
+                                const k = window.ficha.suavizadoPose || 26.0;
                                 const alpha = 1.0 - Math.exp(-k * delta);
                                 this.anclaObj.position.lerp(this._tPos, alpha);
                                 this.anclaObj.quaternion.slerp(this._tQuat, alpha);
@@ -1453,9 +1518,8 @@
                         }
                     }
                 } else if (this.estado === 'RETENCION' && !this.simulandoPreview) {
-                    // Retención de 4.5s si se pierde momentáneamente el sticker
                     const transcurrido = performance.now() - this.tiempoPerdidaInicio;
-                    const maxRetencion = window.ficha.tiempoRetencionPerdidaMs || 4500;
+                    const maxRetencion = window.ficha.tiempoRetencionPerdidaMs || 5000;
 
                     this.anclaObj.position.y += Math.sin(this.relojPulso * 2.5) * 0.00025;
 
@@ -1465,31 +1529,56 @@
                     }
                 }
 
-                // 2. Actualizar barrido holográfico si está materializando o desmaterializando
+                // 2. Auto-Encuadre Espacial: garantiza que el modelo completo quepa siempre
+                // dentro del frustum de pantalla sin tocar el plano cercano ni los bordes
+                let targetAutoFit = 1.0;
+                if (window.ficha.autoEncuadreEspacial && proj && proj[0] !== 0 && proj[5] !== 0) {
+                    const distZ = Math.max(0.5, Math.abs(this.anclaObj.position.z));
+                    const halfWidthWorld = distZ / Math.abs(proj[0]);
+                    const halfHeightWorld = distZ / Math.abs(proj[5]);
+                    const minHalfScreen = Math.min(halfWidthWorld, halfHeightWorld);
+
+                    const margen = window.ficha.margenPantalla || 0.82;
+                    const maxRadioSeguroWorld = Math.min(minHalfScreen * margen, distZ * 0.62);
+
+                    const escalaAncla = Math.max(0.0001, this.anclaObj.scale.x);
+                    const radioActualWorld = this.radioModeloLocal * escalaAncla;
+
+                    if (radioActualWorld > maxRadioSeguroWorld) {
+                        targetAutoFit = maxRadioSeguroWorld / radioActualWorld;
+                    }
+                }
+                this.factorAutoFit += (targetAutoFit - this.factorAutoFit) * (1.0 - Math.exp(-16.0 * delta));
+
+                // 3. Actualizar materialización holográfica (escala suave sin planos de corte)
+                let factorMat = 1.0;
                 if (this.estado === 'MATERIALIZANDO' || this.estado === 'DESMATERIALIZANDO') {
                     this.actualizarEfectoMaterializacion(delta);
+                    const t = this.progresoMat;
+                    factorMat = Math.max(0.001, 1 - Math.pow(1 - t, 3));
                 }
 
-                // 3. Interpolar suavemente la rotación y zoom táctil del usuario (Exploración 360°)
-                const smoothInteract = 1.0 - Math.exp(-14.0 * delta);
+                // 4. Interpolar suavemente la rotación y zoom táctil del usuario (Exploración 360°)
+                const smoothInteract = 1.0 - Math.exp(-16.0 * delta);
                 this.rotUsuarioY += (this.targetRotUsuarioY - this.rotUsuarioY) * smoothInteract;
                 this.rotUsuarioX += (this.targetRotUsuarioX - this.rotUsuarioX) * smoothInteract;
                 this.escalaUsuario += (this.targetEscalaUsuario - this.escalaUsuario) * smoothInteract;
 
-                // 4. Giro lento y majestuoso en loop + rotación de exploración del usuario
+                // 5. Actualizar animación del GLB a velocidad fluida + rotación de exploración
                 if (this.mixer) {
                     this.mixer.update(delta);
                     this.grupoExploracion.rotation.set(this.rotUsuarioX, this.rotUsuarioY, 0);
                 } else if (this.giroRespaldo) {
-                    const velLenta = window.ficha.velocidadGiroRespaldo ?? 0.42;
-                    this.anguloGiroLento += delta * velLenta;
+                    const vel = window.ficha.velocidadGiroRespaldo ?? 0.95;
+                    this.anguloGiroLento += delta * vel;
                     this.grupoExploracion.rotation.set(
                         this.rotUsuarioX,
                         this.anguloGiroLento + this.rotUsuarioY,
                         0
                     );
                 }
-                this.grupoExploracion.scale.setScalar(this.escalaUsuario);
+
+                this.grupoExploracion.scale.setScalar(this.escalaUsuario * this.factorAutoFit * factorMat);
             }
         });
     </script>
@@ -1508,8 +1597,8 @@
         </div>
 
         <div class="top-actions">
-            <!-- Botón de prueba interactiva para el visualizador (aparece si se prueba sin el sticker físico) -->
-            <button id="btnSimularAR" class="btn-spatial-pill" type="button" style="display:none;" aria-label="Probar modelo 3D en vivo">
+            <!-- Botón siempre disponible para habilitar el modelo en todo el espacio AR con o sin sticker -->
+            <button id="btnSimularAR" class="btn-spatial-pill" type="button" aria-label="Habilitar modelo 3D en todo el espacio AR">
                 <span>⚡ Vista 3D</span>
             </button>
 
@@ -1526,7 +1615,7 @@
         </div>
     </div>
 
-    <!-- GUÍA DE ESCANEO ORGÁNICA SIN TEXTO INFERIOR -->
+    <!-- GUÍA DE ESCANEO LIGERA SIN SOMBRA DE RECORTE -->
     <div id="ui-escaneo">
         <div class="marco-escaner" id="marcoEscaner">
             <div class="linea-escaner"></div>
@@ -1534,9 +1623,9 @@
     </div>
 
     <!-- PÍLDORA SUTIL DE GESTOS 360° -->
-    <div id="hintExploracion">Arrastra para explorar 360° · Pellizca para zoom</div>
+    <div id="hintExploracion">Arrastra para explorar 360° · Pellizca para zoom · Doble toque centra</div>
 
-    <!-- DOCK DE CAPTURA SPATIAL GLASS (ÚNICAMENTE FOTO Y VIDEO) -->
+    <!-- DOCK DE CAPTURA SPATIAL GLASS (FOTO Y VIDEO) -->
     <div class="contenedor-controles">
         <div id="badgeTiempo">
             <span class="punto-parpadeo"></span>
@@ -1626,32 +1715,32 @@
     </section>
 
     <!-- ===================================================== -->
-    <!-- ESCENA AR                                             -->
+    <!-- ESCENA AR OPTIMIZADA (SIN PRESERVEDRAWINGBUFFER FIJO) -->
     <!-- ===================================================== -->
     <a-scene
         id="escenaAR"
         compositor-ar
         loading-screen="enabled: false"
-        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.008; warmupTolerance: 1; missTolerance: 12;"
+        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.015; warmupTolerance: 1; missTolerance: 10;"
         color-space="sRGB"
-        renderer="colorManagement: true; antialias: true; alpha: true; preserveDrawingBuffer: true; powerPreference: high-performance;"
+        renderer="colorManagement: true; antialias: true; alpha: true; preserveDrawingBuffer: false; powerPreference: high-performance;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
-        <!-- Iluminación balanceada que respeta los colores originales y realza el negro metálico -->
-        <a-light type="hemisphere" color="#ffffff" groundColor="#4a4a52" intensity="1.0"></a-light>
-        <a-light type="ambient" color="#ffffff" intensity="1.1"></a-light>
+        <a-light type="hemisphere" color="#ffffff" groundColor="#4a4a52" intensity="1.05"></a-light>
+        <a-light type="ambient" color="#ffffff" intensity="1.15"></a-light>
         <a-light type="directional" color="#ffffff" intensity="2.0" position="1.5 2.5 2"></a-light>
         <a-light type="directional" color="#e0f2fe" intensity="0.95" position="-1.5 -1 1.2"></a-light>
 
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        <!-- Cámara con planos near y far extendidos para evitar recortes por profundidad -->
+        <a-camera position="0 0 0" look-controls="enabled: false" near="0.05" far="500000" fov="60"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0" id="objetivoAR"></a-entity>
 
         <a-entity id="anclaEstableAR">
             <a-entity
                 id="entidadModelo"
-                position="0 0 0.1"
+                position="0 0 0"
                 rotation="0 0 0"
                 modelo-cyberpunk-ar>
             </a-entity>
@@ -1670,7 +1759,6 @@
                 obtenerUrlConCache(window.ficha.marcadorMind);
             }
 
-            // 1. Cargar datos de la ficha e Instagram
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
@@ -1694,7 +1782,6 @@
                 botonMapa.style.display = "inline-flex";
             }
 
-            // 2. Ajustar resolución del renderer para máxima fluidez (60fps)
             function aplicarViewerPixelRatio() {
                 const renderer = escenaEl && escenaEl.renderer;
                 if (!renderer || typeof renderer.setPixelRatio !== 'function') return;
@@ -1709,7 +1796,6 @@
                 escenaEl.addEventListener('loaded', aplicarViewerPixelRatio);
             }
 
-            // 3. Ficha informativa
             const panelInferior = document.getElementById("panelInferior");
             const btnAbrirFicha = document.getElementById("btnAbrirFicha");
             const btnCerrarFicha = document.getElementById("btnCerrarFicha");
@@ -1717,7 +1803,6 @@
             btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
-            // 4. Detección visual y modo de prueba para el visualizador
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
@@ -1745,7 +1830,7 @@
 
                 timeoutOcultarUI = setTimeout(() => {
                     uiEscaneo.style.opacity = "0";
-                }, 400);
+                }, 320);
             }
 
             objetivoAR.addEventListener("targetFound", () => {
@@ -1765,11 +1850,11 @@
                 estadoCarga.textContent = "Listo para escanear";
             };
 
-            // Botón de simulación para probar en el visualizador en vivo sin el sticker físico
+            // Permite activar/fijar el modelo en todo el espacio AR en cualquier momento
             btnSimularAR.addEventListener("click", () => {
                 const comp = entidadModelo.components["modelo-cyberpunk-ar"];
                 if (!comp) return;
-                if (comp.estado === "OCULTO" || comp.estado === "DESMATERIALIZANDO") {
+                if (!comp.simulandoPreview) {
                     btnSimularAR.classList.add("activo");
                     alDetectarTargetUI();
                     comp.activarTarget(true);
@@ -1779,7 +1864,7 @@
                 }
             });
 
-            // 5. Captura de FOTO
+            // Captura de FOTO
             const btnFoto = document.getElementById("btnFoto");
             const flashPantalla = document.getElementById("flashPantalla");
 
@@ -1794,23 +1879,11 @@
                 flashPantalla.style.opacity = "0.75";
                 setTimeout(() => { flashPantalla.style.opacity = "0"; }, 180);
 
-                const renderer = escenaEl.renderer;
-                const originalPR = renderer ? renderer.getPixelRatio() : 1;
-                if (renderer) {
-                    const boost = Math.min((window.devicePixelRatio || 1) * 1.5, 3);
-                    renderer.setPixelRatio(Math.max(originalPR, boost));
-                }
-
-                await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
+                invalidarRectsCompositor();
                 window.capturadorAR.solicitarFoto = true;
-
-                setTimeout(() => {
-                    if (renderer) renderer.setPixelRatio(originalPR);
-                }, 600);
             });
 
-            // 6. Grabación de VIDEO HD
+            // Grabación de VIDEO HD
             const btnVideo = document.getElementById("btnVideo");
             const badgeTiempo = document.getElementById("badgeTiempo");
             const textoTiempo = document.getElementById("textoTiempo");
@@ -1857,7 +1930,7 @@
                 const mimeType = obtenerMimeTypeOptimizado();
 
                 const opciones = {
-                    videoBitsPerSecond: window.ficha.bitrateVideo || 12000000
+                    videoBitsPerSecond: window.ficha.bitrateVideo || 10000000
                 };
                 if (mimeType) opciones.mimeType = mimeType;
 
@@ -1927,7 +2000,7 @@
                 }
             });
 
-            // 7. Modal de vista previa
+            // Modal de vista previa
             const modalPreview = document.getElementById("modalPreview");
             const contenedorMedia = document.getElementById("contenedorMedia");
             const pesoArchivo = document.getElementById("pesoArchivo");
