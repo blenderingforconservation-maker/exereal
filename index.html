@@ -4,13 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#05070e">
-    <title>Experiencia AR // Guerrero Demonio - Tori Mask</title>
+    <meta name="theme-color" content="#060810">
+    <title>Experiencia AR - Tori Mask</title>
 
-    <!-- Tipografías Cyberpunk HUD -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- ===================================================== -->
     <!-- 1. CONFIGURACIÓN DEL PROYECTO                         -->
@@ -19,17 +18,20 @@
         window.ficha = {
             modelo: "./models/giro-torimask-opt.glb",
             marcadorMind: "./targets/imagen_rastreo.mind",
-            stickerLogo: "./kimage (1).png",
 
-            // Escala base solicitada (3.6)
+            // Escala base del modelo
             escala: 3.6,
             rotacionInicial: "0 0 0",
 
-            // ===== Estabilidad y Materialización Cyberpunk =====
-            tiempoRetencionPerdidaMs: 4500, // Aguanta 4.5 segundos si se pierde el target
-            duracionMaterializacionMs: 1800, // 1.8s de escaneo holográfico al aparecer
+            // ===== Translucidez del tribal interior =====
+            opacidadTribal: 0.62,
+            opacidadEsfera: 0.38,
+
+            // ===== Estabilidad y Materialización =====
+            tiempoRetencionPerdidaMs: 4500, // Aguanta 4.5s si se pierde el sticker
+            duracionMaterializacionMs: 1700,
             duracionDesmaterializacionMs: 550,
-            suavizadoPose: 16.0, // Interpolación suave anti-temblor
+            suavizadoPose: 16.0,
 
             // ===== Calidad de captura =====
             calidadFotoJPEG: 0.94,
@@ -37,19 +39,17 @@
             fpsVideo: 30,
             maxDuracionVideoSeg: 60,
 
-            // ===== Cámara de entrada ágil (720p inicia rápido sin saturar MindAR) =====
+            // ===== Cámara de entrada ágil =====
             camara: { width: 1280, height: 720 },
-
-            // ===== Calidad del viewer 3D en vivo =====
             viewerPixelRatioMax: 2.0,
 
-            categoria: "Stickers RA // Cyber-Sigil",
+            categoria: "Stickers RA",
             titulo: "Guerrero Demonio",
             autor: "Rawnin del Desierto",
             anio: "2026",
             ubicacion: "Mexa Web",
             mapa: "",
-            historia: "Entidad digital invocada mediante rastreo óptico neuronal. Diseño cyber-sigilism fusionado con materialización holográfica en tiempo real."
+            historia: "."
         };
 
         window.modoCamaraActual = "environment";
@@ -80,396 +80,251 @@
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
     <style>
         :root {
-            --cyber-bg: rgba(6, 9, 18, 0.82);
-            --cyber-panel: rgba(8, 12, 24, 0.94);
-            --cyber-cyan: #00f3ff;
-            --cyber-magenta: #ff0055;
-            --cyber-yellow: #fcee0a;
-            --cyber-green: #00ff9d;
-            --cyber-text: #e2f6ff;
-            --font-hud: 'Orbitron', sans-serif;
-            --font-tech: 'Share Tech Mono', monospace;
-            --font-body: 'Rajdhani', sans-serif;
+            --glass-bg: rgba(10, 14, 24, 0.58);
+            --glass-border: rgba(0, 243, 255, 0.28);
+            --neon-cyan: #00f3ff;
+            --neon-magenta: #ff2a75;
+            --neon-mint: #00f5a0;
+            --text-light: #f0f7ff;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-            font-family: var(--font-body);
-            background-color: transparent; color: var(--cyber-text);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: transparent; color: var(--text-light);
         }
 
-        /* CAPA DE SCANLINES Y VIÑETA CYBERPUNK */
-        .cyber-overlay {
-            position: fixed; inset: 0; pointer-events: none; z-index: 120;
-            background:
-                radial-gradient(circle at center, transparent 58%, rgba(3, 5, 12, 0.55) 100%),
-                repeating-linear-gradient(0deg, rgba(0, 243, 255, 0.025) 0px, rgba(0, 243, 255, 0.025) 1px, transparent 1px, transparent 3px);
-        }
-
-        /* BARRA SUPERIOR HUD */
+        /* BARRA SUPERIOR MINIMALISTA Y ORGÁNICA */
         .top-bar {
             position: fixed; top: 0; left: 0; width: 100%; z-index: 300;
-            display: flex; justify-content: space-between; align-items: flex-start;
-            padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top));
-            pointer-events: none; gap: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 18px; padding-top: max(16px, env(safe-area-inset-top));
+            pointer-events: none;
         }
 
-        .hud-status-wrap {
-            display: flex; flex-direction: column; gap: 6px; max-width: 68%;
+        .status-pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 7px 14px; border-radius: 999px;
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            transition: opacity 0.4s ease, border-color 0.3s ease;
+        }
+
+        .status-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--neon-cyan);
+            box-shadow: 0 0 8px var(--neon-cyan);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .status-pill.activo .status-dot {
+            background: var(--neon-mint);
+            box-shadow: 0 0 10px var(--neon-mint);
+        }
+        .status-pill.retencion .status-dot {
+            background: var(--neon-magenta);
+            box-shadow: 0 0 10px var(--neon-magenta);
         }
 
         #estadoCarga {
-            font-family: var(--font-tech); font-size: 11px; letter-spacing: 1.2px;
-            color: var(--cyber-cyan); text-transform: uppercase;
-            background: var(--cyber-bg);
-            border: 1px solid rgba(0, 243, 255, 0.45);
-            border-left: 3px solid var(--cyber-cyan);
-            padding: 8px 14px;
-            clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 0 18px rgba(0, 243, 255, 0.2);
-            transition: all 0.3s ease;
+            font-size: 11.5px; font-weight: 600; letter-spacing: 0.3px;
+            color: var(--text-light);
         }
-
-        /* Barra de retención cuando se pierde momentáneamente el sticker */
-        #barraRetencionWrap {
-            display: none; flex-direction: column; gap: 4px;
-            background: rgba(20, 6, 16, 0.85);
-            border: 1px solid rgba(255, 0, 85, 0.6);
-            padding: 6px 10px;
-            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%);
-        }
-        #barraRetencionWrap.activo { display: flex; }
-        .retencion-label {
-            font-family: var(--font-tech); font-size: 10px; color: var(--cyber-yellow);
-            letter-spacing: 1px; display: flex; justify-content: space-between; gap: 8px;
-        }
-        .retencion-pista {
-            width: 100%; height: 4px; background: rgba(255, 255, 255, 0.14); overflow: hidden;
-        }
-        #retencionProgreso {
-            width: 100%; height: 100%;
-            background: linear-gradient(90deg, var(--cyber-magenta), var(--cyber-yellow));
-            box-shadow: 0 0 10px var(--cyber-magenta);
-            transform-origin: left center;
-        }
-
-        .top-actions {
-            display: flex; align-items: center; gap: 8px; pointer-events: auto;
-        }
-
-        .btn-hud-top {
-            height: 40px; padding: 0 13px;
-            background: var(--cyber-bg); color: var(--cyber-cyan);
-            border: 1px solid var(--cyber-cyan);
-            font-family: var(--font-hud); font-size: 11px; font-weight: 700;
-            letter-spacing: 1px; cursor: pointer;
-            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.25);
-            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-            transition: all 0.2s ease;
-        }
-        .btn-hud-top:active { transform: scale(0.92); background: var(--cyber-cyan); color: #05070e; }
 
         #btnAbrirFicha {
-            display: none; width: 40px; padding: 0;
-            border-color: var(--cyber-yellow); color: var(--cyber-yellow);
-            box-shadow: 0 0 15px rgba(252, 238, 10, 0.28);
+            pointer-events: auto; display: none; width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--glass-bg); color: var(--text-light);
+            border: 1px solid var(--glass-border);
+            font-size: 15px; font-weight: 700;
+            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); cursor: pointer;
+            align-items: center; justify-content: center;
+            transition: transform 0.2s ease, border-color 0.2s ease;
         }
+        #btnAbrirFicha:active { transform: scale(0.9); }
 
-        /* GUÍA DE ESCANEO CYBERPUNK CON SILUETA DEL STICKER */
+        /* GUÍA DE ESCANEO ORGÁNICA (SIN TEXTO INFERIOR) */
         #ui-escaneo {
             position: fixed; inset: 0;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            display: flex; justify-content: center; align-items: center;
             z-index: 150; pointer-events: none; transition: opacity 0.45s ease;
         }
         .marco-escaner {
-            width: 66vw; max-width: 250px; height: 66vw; max-height: 250px;
-            position: relative; display: flex; align-items: center; justify-content: center;
-            background: radial-gradient(circle, rgba(0, 243, 255, 0.06) 0%, transparent 72%);
-            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.42);
-            transition: all 0.35s ease;
+            width: 62vw; max-width: 230px; height: 62vw; max-height: 230px;
+            border-radius: 50%; position: relative;
+            border: 1.5px solid rgba(0, 243, 255, 0.42);
+            background: radial-gradient(circle, rgba(0, 243, 255, 0.07) 0%, rgba(255, 42, 117, 0.03) 60%, transparent 75%);
+            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.28), inset 0 0 28px rgba(0, 243, 255, 0.14);
+            display: flex; align-items: center; justify-content: center;
+            transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
         }
-        /* Esquinas angulares Cyberpunk */
-        .esquina-hud {
-            position: absolute; width: 28px; height: 28px;
-            border-color: var(--cyber-cyan); border-style: solid;
-            filter: drop-shadow(0 0 8px var(--cyber-cyan));
-            transition: all 0.3s ease;
-        }
-        .esquina-hud.tl { top: 0; left: 0; border-width: 3px 0 0 3px; }
-        .esquina-hud.tr { top: 0; right: 0; border-width: 3px 3px 0 0; }
-        .esquina-hud.bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
-        .esquina-hud.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
-
-        .marco-escaner.detectado .esquina-hud {
-            border-color: var(--cyber-green);
-            filter: drop-shadow(0 0 14px var(--cyber-green));
-            width: 36px; height: 36px;
-        }
-
-        /* Silueta holográfica del Sticker Guerrero Demonio en el centro del escáner */
-        .silueta-sticker-guia {
-            width: 72%; height: 72%; opacity: 0.26;
-            stroke: var(--cyber-cyan); fill: var(--cyber-cyan);
-            filter: drop-shadow(0 0 6px var(--cyber-cyan));
-            transition: opacity 0.3s ease, transform 0.35s ease;
-        }
-        .marco-escaner.detectado .silueta-sticker-guia {
-            opacity: 0; transform: scale(1.12);
+        .marco-escaner.detectado {
+            border-color: rgba(0, 245, 160, 0.85);
+            transform: scale(1.06);
+            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.15), 0 0 36px rgba(0, 245, 160, 0.45);
         }
 
         .linea-escaner {
-            position: absolute; width: 88%; height: 2px;
-            background: linear-gradient(90deg, transparent, var(--cyber-cyan), var(--cyber-magenta), var(--cyber-cyan), transparent);
-            box-shadow: 0 0 14px var(--cyber-cyan), 0 0 24px var(--cyber-magenta);
-            animation: barridoCyber 2.1s infinite ease-in-out;
+            width: 76%; height: 2px; border-radius: 999px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
+            box-shadow: 0 0 14px var(--neon-cyan);
+            animation: pulsoOrganico 2.4s infinite ease-in-out;
             transition: opacity 0.25s ease;
         }
         .marco-escaner.detectado .linea-escaner { opacity: 0; animation-play-state: paused; }
 
-        .check-detectado {
-            position: absolute; font-family: var(--font-hud); font-size: 15px; font-weight: 900;
-            letter-spacing: 2px; color: var(--cyber-green);
-            background: rgba(5, 16, 14, 0.88); border: 1px solid var(--cyber-green);
-            padding: 8px 16px; opacity: 0; transform: scale(0.6);
-            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-            transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
-            text-shadow: 0 0 12px var(--cyber-green);
-            box-shadow: 0 0 24px rgba(0, 255, 157, 0.35);
-        }
-        .marco-escaner.detectado .check-detectado { opacity: 1; transform: scale(1); }
-
-        @keyframes barridoCyber {
-            0%, 100% { transform: translateY(-92px); opacity: 0.35; }
-            50% { transform: translateY(92px); opacity: 1; }
+        @keyframes pulsoOrganico {
+            0%, 100% { transform: translateY(-68px) scaleX(0.75); opacity: 0.3; }
+            50% { transform: translateY(68px) scaleX(0.95); opacity: 0.95; }
         }
 
-        .instruccion-ar {
-            margin-top: 22px; background: var(--cyber-bg); color: var(--cyber-text);
-            border: 1px solid rgba(0, 243, 255, 0.38);
-            border-right: 3px solid var(--cyber-magenta);
-            padding: 9px 18px; font-family: var(--font-tech); font-size: 12px;
-            letter-spacing: 1px; text-transform: uppercase;
-            text-align: center; max-width: 86%;
-            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-            backdrop-filter: blur(8px);
-            transition: all 0.3s ease;
-        }
-        .instruccion-ar.detectado {
-            border-color: var(--cyber-green); color: var(--cyber-green);
-            box-shadow: 0 0 20px rgba(0, 255, 157, 0.3);
-        }
-
-        /* DOCK INFERIOR DE CONTROLES CYBERPUNK (FOTO, VIDEO, CÁMARA) */
+        /* DOCK DE CONTROLES ORGÁNICO Y LIMPIO */
         .contenedor-controles {
-            position: fixed; bottom: 24px; bottom: max(24px, env(safe-area-inset-bottom));
+            position: fixed; bottom: 26px; bottom: max(26px, env(safe-area-inset-bottom));
             left: 50%; transform: translateX(-50%); z-index: 280;
             display: flex; flex-direction: column; align-items: center; gap: 10px;
         }
         #badgeTiempo {
-            display: none; align-items: center; gap: 8px;
-            background: rgba(24, 4, 14, 0.92); color: var(--cyber-magenta);
-            border: 1px solid var(--cyber-magenta);
-            font-family: var(--font-tech); font-size: 12px; font-weight: 700; letter-spacing: 1.5px;
-            padding: 6px 14px;
-            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
-            box-shadow: 0 0 18px rgba(255, 0, 85, 0.5);
+            display: none; align-items: center; gap: 7px;
+            background: rgba(20, 8, 18, 0.78); color: #ffffff;
+            border: 1px solid rgba(255, 42, 117, 0.55);
+            font-size: 12px; font-weight: 600; letter-spacing: 0.8px;
+            padding: 5px 14px; border-radius: 999px;
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 16px rgba(255, 42, 117, 0.3);
         }
         #badgeTiempo.activo { display: flex; }
         .punto-parpadeo {
-            width: 8px; height: 8px; background: var(--cyber-magenta);
-            box-shadow: 0 0 8px var(--cyber-magenta);
-            animation: parpadeo 0.9s infinite;
+            width: 7px; height: 7px; border-radius: 50%; background: var(--neon-magenta);
+            box-shadow: 0 0 8px var(--neon-magenta);
+            animation: parpadeo 1s infinite;
         }
         @keyframes parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
 
         .dock-captura {
-            display: flex; align-items: center; gap: 22px;
-            background: var(--cyber-bg);
-            border: 1px solid rgba(0, 243, 255, 0.45);
-            padding: 12px 26px;
-            clip-path: polygon(16px 0, calc(100% - 16px) 0, 100% 16px, 100% calc(100% - 16px), calc(100% - 16px) 100%, 16px 100%, 0 calc(100% - 16px), 0 16px);
-            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65), 0 0 22px rgba(0, 243, 255, 0.18);
-            position: relative;
+            display: flex; align-items: center; gap: 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 10px 22px; border-radius: 999px;
+            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 20px rgba(0, 243, 255, 0.12);
         }
-        .dock-captura::before {
-            content: "REC // SYS.2026";
-            position: absolute; top: 3px; left: 50%; transform: translateX(-50%);
-            font-family: var(--font-tech); font-size: 8px; letter-spacing: 2px;
-            color: rgba(0, 243, 255, 0.55); pointer-events: none;
-        }
-
         .btn-icono {
             position: relative; border: none; background: none; padding: 0;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             touch-action: manipulation;
-            transition: transform 0.18s cubic-bezier(0.2,0.8,0.2,1);
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .btn-icono:active { transform: scale(0.88); }
 
         #btnFoto {
-            width: 56px; height: 56px;
-            border: 2px solid var(--cyber-cyan);
-            background: rgba(0, 243, 255, 0.12);
-            clip-path: polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%);
-            box-shadow: 0 0 16px rgba(0, 243, 255, 0.35);
+            width: 54px; height: 54px; border-radius: 50%;
+            border: 2px solid rgba(0, 243, 255, 0.85);
+            background: rgba(0, 243, 255, 0.1);
+            box-shadow: 0 0 16px rgba(0, 243, 255, 0.22);
         }
         .nucleo-foto {
-            width: 42px; height: 42px;
-            background: var(--cyber-cyan); color: #05070e;
-            clip-path: polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%);
-            display: flex; align-items: center; justify-content: center;
+            width: 42px; height: 42px; border-radius: 50%;
+            background: linear-gradient(135deg, #ffffff, #b8faff);
+            display: flex; align-items: center; justify-content: center; color: #08101e;
         }
 
         #btnVideo {
-            width: 56px; height: 56px;
-            border: 2px solid var(--cyber-magenta);
-            background: rgba(255, 0, 85, 0.12);
-            clip-path: polygon(25% 0%, 75% 0%, 100% 25%, 100% 75%, 75% 100%, 25% 100%, 0% 75%, 0% 25%);
-            box-shadow: 0 0 16px rgba(255, 0, 85, 0.35);
+            width: 54px; height: 54px; border-radius: 50%;
+            border: 2px solid rgba(255, 42, 117, 0.85);
+            background: rgba(255, 42, 117, 0.1);
+            box-shadow: 0 0 16px rgba(255, 42, 117, 0.22);
         }
         .nucleo-video {
             width: 38px; height: 38px; border-radius: 50%;
-            background: var(--cyber-magenta);
-            box-shadow: 0 0 12px var(--cyber-magenta);
-            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+            background: linear-gradient(135deg, #ff2a75, #ff5e97);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
         #btnVideo.grabando {
-            border-color: var(--cyber-yellow);
-            box-shadow: 0 0 22px rgba(252, 238, 10, 0.6);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.45);
         }
         #btnVideo.grabando .nucleo-video {
-            width: 22px; height: 22px; border-radius: 4px;
-            background: var(--cyber-yellow);
+            width: 20px; height: 20px; border-radius: 6px;
         }
 
         #btnCambiarCamara {
-            width: 46px; height: 46px;
-            background: rgba(252, 238, 10, 0.1);
-            border: 1.5px solid var(--cyber-yellow);
-            color: var(--cyber-yellow);
-            clip-path: polygon(20% 0%, 80% 0%, 100% 20%, 100% 80%, 80% 100%, 20% 100%, 0% 80%, 0% 20%);
-            transition: transform 0.4s ease;
+            width: 44px; height: 44px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            color: var(--text-light); transition: transform 0.4s ease;
         }
         #btnCambiarCamara.girando { transform: rotate(180deg); }
         #btnCambiarCamara[disabled] { opacity: 0.4; cursor: wait; }
 
         #flashPantalla {
             position: fixed; inset: 0;
-            background: var(--cyber-cyan); opacity: 0; pointer-events: none; z-index: 500;
+            background: #ffffff; opacity: 0; pointer-events: none; z-index: 500;
             transition: opacity 0.25s ease;
         }
 
-        /* MODAL DE VISTA PREVIA DE FOTO / VIDEO */
-        #modalPreview, #modalQR {
+        /* MODAL DE VISTA PREVIA */
+        #modalPreview {
             position: fixed; inset: 0;
-            background: rgba(3, 5, 12, 0.88); backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px); z-index: 600;
+            background: rgba(4, 7, 15, 0.82); backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px); z-index: 600;
             display: none; flex-direction: column; justify-content: center; align-items: center;
             padding: 18px;
         }
-        #modalPreview.activo, #modalQR.activo { display: flex; }
-
+        #modalPreview.activo { display: flex; }
         .tarjeta-preview {
-            background: var(--cyber-panel);
-            border: 1.5px solid var(--cyber-cyan);
-            clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
-            padding: 18px; width: 100%; max-width: 390px;
-            color: var(--cyber-text);
-            box-shadow: 0 0 35px rgba(0, 243, 255, 0.25); text-align: center;
+            background: rgba(14, 19, 32, 0.92);
+            border: 1px solid var(--glass-border);
+            border-radius: 26px; padding: 18px; width: 100%; max-width: 380px;
+            color: var(--text-light);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6); text-align: center;
         }
         .cabecera-preview {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 12px; font-family: var(--font-hud); font-size: 13px;
-            font-weight: 700; color: var(--cyber-cyan); letter-spacing: 1px;
+            margin-bottom: 12px; font-size: 13.5px; font-weight: 600; color: var(--text-light);
         }
         #pesoArchivo {
-            background: rgba(0, 255, 157, 0.12); color: var(--cyber-green);
-            border: 1px solid var(--cyber-green); padding: 4px 10px;
-            font-family: var(--font-tech); font-size: 11px;
+            background: rgba(0, 243, 255, 0.12); color: var(--neon-cyan);
+            border: 1px solid rgba(0, 243, 255, 0.28); padding: 4px 10px;
+            border-radius: 999px; font-weight: 600; font-size: 11px;
         }
         .contenedor-media {
-            width: 100%; max-height: 52vh; overflow: hidden;
-            border: 1px solid rgba(0, 243, 255, 0.3);
+            width: 100%; max-height: 55vh; border-radius: 18px; overflow: hidden;
             background: #000000; margin-bottom: 14px;
             display: flex; justify-content: center; align-items: center;
         }
         .contenedor-media img, .contenedor-media video {
-            max-width: 100%; max-height: 52vh; object-fit: contain; display: block;
+            max-width: 100%; max-height: 55vh; object-fit: contain; display: block;
         }
         .acciones-preview { display: flex; gap: 8px; }
         .btn-modal {
-            flex: 1; padding: 12px 10px; border: 1px solid transparent;
-            font-family: var(--font-hud); font-size: 11px; font-weight: 700;
-            letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+            flex: 1; padding: 12px 10px; border: none; border-radius: 14px;
+            font-size: 13px; font-weight: 600; cursor: pointer;
             display: flex; align-items: center; justify-content: center; gap: 6px;
-            clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
             touch-action: manipulation;
         }
-        #btnCerrarPreview, #btnCerrarQR {
-            background: rgba(255, 0, 85, 0.18); color: var(--cyber-magenta);
-            border-color: var(--cyber-magenta); flex: 0.55;
-        }
-        #btnCompartir {
-            display: none; background: var(--cyber-green); color: #040810;
-        }
-        #btnDescargar, #btnDescargarQR {
-            background: var(--cyber-cyan); color: #040810;
-        }
+        #btnCerrarPreview { background: rgba(255, 255, 255, 0.1); color: #ffffff; flex: 0.6; }
+        #btnCompartir { display: none; background: var(--neon-mint); color: #061018; }
+        #btnDescargar { background: var(--neon-cyan); color: #061018; }
 
-        /* CONTROLES DEL MODAL QR PERSONALIZADO */
-        .qr-canvas-box {
-            background: #05070e; border: 1px solid rgba(0, 243, 255, 0.35);
-            padding: 12px; margin-bottom: 12px; display: flex; justify-content: center;
-        }
-        #qrCanvas {
-            width: 100%; max-width: 270px; height: auto; display: block;
-            box-shadow: 0 0 22px rgba(0, 243, 255, 0.2);
-        }
-        .qr-field {
-            text-align: left; margin-bottom: 10px;
-        }
-        .qr-field label {
-            display: block; font-family: var(--font-tech); font-size: 10px;
-            color: var(--cyber-cyan); letter-spacing: 1px; margin-bottom: 4px;
-            text-transform: uppercase;
-        }
-        .qr-field input[type="url"] {
-            width: 100%; padding: 9px 11px; background: #050811;
-            border: 1px solid rgba(0, 243, 255, 0.45); color: var(--cyber-text);
-            font-family: var(--font-tech); font-size: 12px;
-        }
-        .qr-tools-row {
-            display: flex; gap: 8px; margin-bottom: 12px;
-        }
-        .btn-qr-tool {
-            flex: 1; padding: 8px; background: rgba(252, 238, 10, 0.1);
-            border: 1px solid var(--cyber-yellow); color: var(--cyber-yellow);
-            font-family: var(--font-tech); font-size: 11px; cursor: pointer;
-            text-transform: uppercase;
-        }
-
-        /* FICHA TÉCNICA INFERIOR CYBERPUNK */
+        /* FICHA INFERIOR */
         #panelInferior {
             position: fixed; bottom: 0; left: 50%; transform: translate(-50%, 110%);
-            width: 100%; max-width: 600px;
-            background: var(--cyber-panel);
-            border-top: 2px solid var(--cyber-cyan);
-            border-left: 1px solid rgba(0, 243, 255, 0.35);
-            border-right: 1px solid rgba(0, 243, 255, 0.35);
-            padding: 22px 24px 30px; z-index: 400;
-            box-shadow: 0 -10px 35px rgba(0, 243, 255, 0.22);
-            transition: transform 0.4s cubic-bezier(0.16,1,0.3,1);
-            max-height: 80vh; overflow-y: auto; color: var(--cyber-text);
+            width: 100%; max-width: 580px;
+            background: rgba(12, 17, 28, 0.94);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            border-radius: 26px 26px 0 0; padding: 22px 24px 30px;
+            z-index: 400; box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.5);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            max-height: 80vh; overflow-y: auto; color: var(--text-light);
         }
         #panelInferior.visible { transform: translate(-50%, 0%); }
         .cabecera-ficha {
@@ -477,43 +332,39 @@
             gap: 12px; margin-bottom: 14px;
         }
         .badge-categoria {
-            display: inline-block; font-family: var(--font-tech); font-size: 10px;
-            letter-spacing: 1.6px; color: #05070e; background-color: var(--cyber-yellow);
-            padding: 4px 10px; font-weight: 700; margin-bottom: 6px; text-transform: uppercase;
+            display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+            color: #061018; background-color: var(--neon-cyan); padding: 4px 10px;
+            border-radius: 999px; margin-bottom: 6px; text-transform: uppercase;
         }
-        .titulo-obra {
-            margin: 0; font-family: var(--font-hud); font-size: 22px;
-            font-weight: 900; color: var(--cyber-cyan); letter-spacing: 1px;
-            text-transform: uppercase;
-        }
+        .titulo-obra { margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; }
         .boton-cerrar-ficha {
-            background: rgba(255, 0, 85, 0.16); color: var(--cyber-magenta);
-            border: 1px solid var(--cyber-magenta); padding: 8px 14px;
-            font-family: var(--font-hud); font-size: 11px; font-weight: 700; cursor: pointer;
+            background: rgba(255, 255, 255, 0.1); color: #ffffff; border: none;
+            border-radius: 999px; padding: 8px 14px; font-size: 12px;
+            font-weight: 600; cursor: pointer;
         }
         .datos-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
-            padding-top: 14px; border-top: 1px solid rgba(0, 243, 255, 0.25); margin-bottom: 14px;
+            padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12); margin-bottom: 14px;
         }
         .etiqueta {
-            display: block; font-family: var(--font-tech); font-size: 10px;
-            letter-spacing: 1.4px; color: var(--cyber-cyan); margin-bottom: 4px;
+            display: block; font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+            color: var(--neon-cyan); margin-bottom: 4px;
         }
-        .valor { font-size: 15px; color: var(--cyber-text); font-weight: 700; }
+        .valor { font-size: 14px; color: var(--text-light); font-weight: 600; }
         .historia-texto {
-            font-size: 14.5px; line-height: 1.6; color: #b8d4e3;
+            font-size: 14px; line-height: 1.6; color: rgba(240, 247, 255, 0.8);
             margin: 8px 0 0 0; white-space: pre-line;
         }
         #botonMapa {
             display: none; margin-top: 14px; width: 100%; text-align: center;
-            padding: 12px; background: rgba(0, 243, 255, 0.15); color: var(--cyber-cyan);
-            border: 1px solid var(--cyber-cyan); text-decoration: none;
-            font-family: var(--font-hud); font-size: 11px; font-weight: 700;
+            padding: 12px; background: rgba(0, 243, 255, 0.14); color: var(--neon-cyan);
+            border: 1px solid var(--glass-border); border-radius: 14px;
+            text-decoration: none; font-size: 12px; font-weight: 700;
         }
     </style>
 
     <!-- ===================================================== -->
-    <!-- 3. MOTOR AR: COMPOSITOR + MATERIALIZACIÓN + RETENCIÓN -->
+    <!-- 3. MOTOR AR: COMPOSITOR + MATERIAL TRANSLÚCIDO        -->
     <!-- ===================================================== -->
     <script>
         function calcularResolucionCaptura(vw, vh, modo) {
@@ -540,7 +391,7 @@
         };
 
         // ============================================================
-        // COMPOSITOR: une cámara + 3D para fotos y videos HD
+        // COMPOSITOR: une cámara + 3D para fotos y videos
         // ============================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
@@ -650,8 +501,8 @@
         });
 
         // ============================================================
-        // COMPONENTE PRINCIPAL: MODELO ANIMADO + MATERIALIZACIÓN CYBERPUNK
-        // + RETENCIÓN ANTI-PÉRDIDA DE VARIOS SEGUNDOS
+        // MODELO 3D: TRIBAL TRANSLÚCIDO EN ESFERA + MATERIALIZACIÓN
+        // + RETENCIÓN ANTI-PÉRDIDA
         // ============================================================
         AFRAME.registerComponent('modelo-cyberpunk-ar', {
             init: function () {
@@ -662,21 +513,17 @@
                 this.contenedor = null;
                 this.anilloEscaner = null;
                 this.mallasOriginales = [];
-                this.mallasHolograma = [];
 
-                // Estado: 'OCULTO' | 'MATERIALIZANDO' | 'ACTIVO' | 'RETENCION' | 'DESMATERIALIZANDO'
                 this.estado = 'OCULTO';
-                this.progresoMat = 0; // 0.0 (oculto) -> 1.0 (100% materializado)
+                this.progresoMat = 0;
                 this.rastreandoEnVivo = false;
                 this.tiempoPerdidaInicio = 0;
                 this.poseInicializada = false;
                 this.relojPulso = 0;
 
-                // Límites locales de barrido vertical
                 this.minYLocal = -1.8;
                 this.maxYLocal = 1.8;
 
-                // Vectores auxiliares para interpolación suave y plano de corte
                 this._tPos = new THREE.Vector3();
                 this._tQuat = new THREE.Quaternion();
                 this._tScale = new THREE.Vector3();
@@ -688,55 +535,49 @@
                 const anclaEstable = document.getElementById('anclaEstableAR');
                 const targetEl = document.getElementById('objetivoAR');
                 const estadoUI = document.getElementById('estadoCarga');
-                const barraRetencionWrap = document.getElementById('barraRetencionWrap');
-                const retencionProgreso = document.getElementById('retencionProgreso');
-                const retencionSegTxt = document.getElementById('retencionSegTxt');
+                const statusPill = document.getElementById('statusPill');
 
                 this.anclaObj = anclaEstable.object3D;
                 this.targetObj = targetEl.object3D;
                 this.anclaObj.visible = false;
 
-                // Habilitar Local Clipping en el renderer de Three.js para el efecto de materialización
                 const activarClipping = () => {
                     if (el.sceneEl && el.sceneEl.renderer) {
                         el.sceneEl.renderer.localClippingEnabled = true;
+                        el.sceneEl.renderer.sortObjects = true;
                     }
                 };
                 if (el.sceneEl.hasLoaded) activarClipping();
                 else el.sceneEl.addEventListener('loaded', activarClipping);
 
-                // Construir anillo láser de escaneo Cyberpunk 3D
-                const crearAnilloLaser = (radio) => {
+                // Anillo orgánico de materialización 3D
+                const crearAnilloEscaner = (radio) => {
                     const group = new THREE.Group();
 
-                    // Anillo principal Neon Cyan
-                    const geoRing = new THREE.RingGeometry(radio * 0.72, radio * 1.05, 8);
+                    const geoRing = new THREE.RingGeometry(radio * 0.78, radio * 1.0, 48);
                     geoRing.rotateX(-Math.PI / 2);
                     const matRing = new THREE.MeshBasicMaterial({
                         color: 0x00f3ff,
                         side: THREE.DoubleSide,
                         transparent: true,
-                        opacity: 0.85,
+                        opacity: 0.75,
                         blending: THREE.AdditiveBlending,
                         depthWrite: false
                     });
-                    const meshRing = new THREE.Mesh(geoRing, matRing);
 
-                    // Borde interior Magenta
-                    const geoInner = new THREE.RingGeometry(radio * 0.25, radio * 0.7, 16);
-                    geoInner.rotateX(-Math.PI / 2);
-                    const matInner = new THREE.MeshBasicMaterial({
-                        color: 0xff0055,
+                    const geoGlow = new THREE.RingGeometry(radio * 0.35, radio * 0.78, 48);
+                    geoGlow.rotateX(-Math.PI / 2);
+                    const matGlow = new THREE.MeshBasicMaterial({
+                        color: 0xff2a75,
                         side: THREE.DoubleSide,
                         transparent: true,
-                        opacity: 0.35,
+                        opacity: 0.25,
                         blending: THREE.AdditiveBlending,
                         depthWrite: false
                     });
-                    const meshInner = new THREE.Mesh(geoInner, matInner);
 
-                    group.add(meshRing);
-                    group.add(meshInner);
+                    group.add(new THREE.Mesh(geoRing, matRing));
+                    group.add(new THREE.Mesh(geoGlow, matGlow));
                     group.visible = false;
                     return group;
                 };
@@ -758,7 +599,7 @@
                         (gltf) => {
                             const model = gltf.scene;
 
-                            // 1. Inicializar animaciones en loop infinito
+                            // 1. Inicializar animaciones en loop
                             if (gltf.animations && gltf.animations.length > 0) {
                                 this.mixer = new THREE.AnimationMixer(model);
                                 gltf.animations.forEach((clip) => {
@@ -772,38 +613,97 @@
                                 this.giroRespaldo = true;
                             }
 
-                            // 2. Calcular Bounding Box y preparar materiales + capa wireframe holográfica
+                            // 2. Medir cada malla para identificar la esfera exterior y el tribal interior
                             model.updateMatrixWorld(true);
-                            const box = new THREE.Box3();
+                            const boxGlobal = new THREE.Box3();
+                            const infoMallas = [];
 
                             model.traverse((node) => {
                                 if (node.isMesh) {
                                     node.frustumCulled = false;
-                                    box.expandByObject(node);
-
-                                    const mats = Array.isArray(node.material) ? node.material : [node.material];
-                                    mats.forEach((mat) => {
-                                        if (!mat) return;
-                                        mat.side = THREE.DoubleSide;
-                                        mat.clippingPlanes = [this.planoCorte];
-                                        mat.clipShadows = true;
-                                        if (mat.emissive) {
-                                            mat.userData.origEmissive = mat.emissive.clone();
-                                            mat.userData.origEmissiveIntensity = mat.emissiveIntensity ?? 1.0;
-                                        }
-                                        mat.needsUpdate = true;
-                                        this.mallasOriginales.push(mat);
-                                    });
+                                    const mBox = new THREE.Box3().setFromObject(node);
+                                    boxGlobal.union(mBox);
+                                    const mSize = mBox.getSize(new THREE.Vector3());
+                                    const volumen = mSize.x * mSize.y * mSize.z;
+                                    infoMallas.push({ node, volumen, mSize });
                                 }
                             });
 
-                            if (box.isEmpty()) box.setFromObject(model);
+                            if (boxGlobal.isEmpty()) boxGlobal.setFromObject(model);
 
-                            const size = box.getSize(new THREE.Vector3());
-                            const center = box.getCenter(new THREE.Vector3());
+                            // Ordenar de menor a mayor volumen (el tribal interno suele tener menor volumen o nombre específico)
+                            infoMallas.sort((a, b) => a.volumen - b.volumen);
+                            const maxVolumen = infoMallas.length > 0 ? infoMallas[infoMallas.length - 1].volumen : 1;
+
+                            infoMallas.forEach((item, index) => {
+                                const node = item.node;
+                                const nombre = ((node.name || "") + " " + (node.parent?.name || "")).toLowerCase();
+
+                                // Determinar si es el tribal/máscara interior o la esfera envolvente
+                                const esEsferaExplicita = /sphere|esfera|ball|orb|glass|outer/i.test(nombre);
+                                const esTribalExplicito = /tribal|mask|mascara|tori|demon|sigil|curve|logo|inner/i.test(nombre);
+
+                                let esTribalInterior = true;
+                                if (infoMallas.length > 1) {
+                                    if (esTribalExplicito) {
+                                        esTribalInterior = true;
+                                    } else if (esEsferaExplicita) {
+                                        esTribalInterior = false;
+                                    } else {
+                                        // Si no tienen nombres descriptivos, las mallas internas tienen menor volumen que la esfera exterior
+                                        esTribalInterior = item.volumen < maxVolumen * 0.88 || index < infoMallas.length - 1;
+                                    }
+                                }
+
+                                // Clonar materiales para no afectar instancias compartidas y aplicar translucidez
+                                const origMats = Array.isArray(node.material) ? node.material : [node.material];
+                                const nuevosMats = origMats.map((mat) => {
+                                    if (!mat) return mat;
+                                    const m = mat.clone();
+                                    m.side = THREE.DoubleSide;
+                                    m.transparent = true;
+                                    m.clippingPlanes = [this.planoCorte];
+                                    m.clipShadows = true;
+
+                                    if (esTribalInterior) {
+                                        // Material translúcido etéreo para el tribal dentro de la esfera
+                                        m.opacity = window.ficha.opacidadTribal ?? 0.62;
+                                        m.depthWrite = false;
+                                        if ('roughness' in m) m.roughness = Math.min(m.roughness ?? 0.2, 0.22);
+                                        if ('metalness' in m) m.metalness = Math.max(m.metalness ?? 0.15, 0.25);
+                                        if ('transmission' in m) m.transmission = Math.max(m.transmission ?? 0, 0.45);
+                                        if (m.emissive) {
+                                            if (m.emissive.r === 0 && m.emissive.g === 0 && m.emissive.b === 0) {
+                                                m.emissive.setHex(0x0a2e36);
+                                            }
+                                            m.emissiveIntensity = 0.85;
+                                        }
+                                    } else {
+                                        // Si hay esfera exterior, asegurar que no bloquee el Z-buffer del tribal interior
+                                        m.opacity = Math.min(m.opacity ?? 1.0, window.ficha.opacidadEsfera ?? 0.38);
+                                        m.depthWrite = false;
+                                        if ('roughness' in m) m.roughness = 0.1;
+                                    }
+
+                                    if (m.emissive) {
+                                        m.userData.origEmissive = m.emissive.clone();
+                                        m.userData.origEmissiveIntensity = m.emissiveIntensity ?? 0.85;
+                                    }
+                                    m.userData.baseOpacity = m.opacity;
+                                    m.needsUpdate = true;
+                                    this.mallasOriginales.push(m);
+                                    return m;
+                                });
+
+                                node.material = Array.isArray(node.material) ? nuevosMats : nuevosMats[0];
+                                // El tribal interior se dibuja primero (renderOrder menor) y la esfera después
+                                node.renderOrder = esTribalInterior ? (10 + index) : (30 + index);
+                            });
+
+                            const size = boxGlobal.getSize(new THREE.Vector3());
+                            const center = boxGlobal.getCenter(new THREE.Vector3());
                             const maxDim = Math.max(size.x, size.y, size.z);
 
-                            // 3. Jerarquía de doble grupo para centrado limpio sin romper animaciones
                             const pivotGroup = new THREE.Group();
                             const offsetGroup = new THREE.Group();
 
@@ -819,29 +719,22 @@
                                 pivotGroup.scale.setScalar(escalaObjetivo);
                             }
 
-                            // Rango vertical en espacio del contenedor para el barrido láser
                             this.minYLocal = -escalaObjetivo * 0.58;
                             this.maxYLocal = escalaObjetivo * 0.58;
 
-                            // Anillo láser de materialización Cyberpunk
-                            this.anilloEscaner = crearAnilloLaser(escalaObjetivo * 0.55);
+                            this.anilloEscaner = crearAnilloEscaner(escalaObjetivo * 0.52);
+                            this.anilloEscaner.renderOrder = 50;
                             el.object3D.add(this.anilloEscaner);
 
                             el.setObject3D('mesh', pivotGroup);
                             this.contenedor = pivotGroup;
 
-                            if (estadoUI) {
-                                estadoUI.textContent = "SYS.READY // ESCANEA EL STICKER";
-                            }
+                            if (estadoUI) estadoUI.textContent = "Listo para escanear";
                         },
                         undefined,
                         (error) => {
                             console.error("Error cargando GLB:", error);
-                            if (estadoUI) {
-                                estadoUI.textContent = "ERR // FALLO AL CARGAR GLB";
-                                estadoUI.style.borderColor = "#ff0055";
-                                estadoUI.style.color = "#ff0055";
-                            }
+                            if (estadoUI) estadoUI.textContent = "Error al cargar modelo";
                         }
                     );
                 };
@@ -853,15 +746,10 @@
                     cargarGLB();
                 }
 
-                // ============================================================
-                // EVENTOS DE DETECCIÓN CON RETENCIÓN DE VARIOS SEGUNDOS
-                // ============================================================
                 targetEl.addEventListener('targetFound', () => {
                     this.rastreandoEnVivo = true;
                     this.anclaObj.visible = true;
-                    barraRetencionWrap.classList.remove('activo');
 
-                    // Reanudar animaciones en loop
                     if (this.mixer && this.actions.length > 0) {
                         this.actions.forEach(a => {
                             a.paused = false;
@@ -869,41 +757,35 @@
                         });
                     }
 
-                    // Si estaba oculto o desmaterializándose, iniciar materialización Cyberpunk
                     if (this.estado === 'OCULTO' || this.estado === 'DESMATERIALIZANDO') {
                         if (this.estado === 'OCULTO') this.progresoMat = 0.0;
                         this.estado = 'MATERIALIZANDO';
                         this.aplicarClippingActivo(true);
                     } else if (this.estado === 'RETENCION') {
-                        // Si se recuperó dentro de los segundos de tolerancia, continuar sin reiniciar
                         this.estado = this.progresoMat < 1.0 ? 'MATERIALIZANDO' : 'ACTIVO';
                     }
 
-                    if (estadoUI) {
-                        estadoUI.textContent = "LINK ACTIVO // HOLO-TRACKING ON";
-                        estadoUI.style.borderColor = "#00ff9d";
-                        estadoUI.style.color = "#00ff9d";
+                    if (statusPill) {
+                        statusPill.classList.remove('retencion');
+                        statusPill.classList.add('activo');
                     }
+                    if (estadoUI) estadoUI.textContent = "Conectado";
                 });
 
                 targetEl.addEventListener('targetLost', () => {
                     this.rastreandoEnVivo = false;
-                    // En lugar de ocultar el modelo de inmediato, entramos en modo RETENCIÓN
                     if (this.estado !== 'OCULTO') {
                         this.estado = 'RETENCION';
                         this.tiempoPerdidaInicio = performance.now();
-                        barraRetencionWrap.classList.add('activo');
-                        if (estadoUI) {
-                            estadoUI.textContent = "BUFFER NEURAL // ESTABILIZANDO POSE";
-                            estadoUI.style.borderColor = "#fcee0a";
-                            estadoUI.style.color = "#fcee0a";
+                        if (statusPill) {
+                            statusPill.classList.remove('activo');
+                            statusPill.classList.add('retencion');
                         }
+                        if (estadoUI) estadoUI.textContent = "Estabilizando...";
                     }
                 });
 
-                this._barraRetencionWrap = barraRetencionWrap;
-                this._retencionProgreso = retencionProgreso;
-                this._retencionSegTxt = retencionSegTxt;
+                this._statusPill = statusPill;
                 this._estadoUI = estadoUI;
             },
 
@@ -925,7 +807,7 @@
             actualizarEfectoMaterializacion: function (delta) {
                 const THREE = AFRAME.THREE;
                 if (this.estado === 'MATERIALIZANDO') {
-                    const dur = (window.ficha.duracionMaterializacionMs || 1800) / 1000;
+                    const dur = (window.ficha.duracionMaterializacionMs || 1700) / 1000;
                     this.progresoMat = Math.min(1.0, this.progresoMat + delta / dur);
                     if (this.progresoMat >= 1.0) {
                         this.estado = 'ACTIVO';
@@ -947,7 +829,6 @@
                     return;
                 }
 
-                // Curva suave cubic easeInOut para el barrido láser
                 const t = this.progresoMat;
                 const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
                 const alturaLocal = THREE.MathUtils.lerp(this.minYLocal, this.maxYLocal, ease);
@@ -955,28 +836,25 @@
                 if (this.anilloEscaner) {
                     this.anilloEscaner.visible = true;
                     this.anilloEscaner.position.set(0, alturaLocal, 0);
-                    this.anilloEscaner.rotation.y += delta * 4.5;
+                    this.anilloEscaner.rotation.y += delta * 3.5;
 
-                    // Actualizar plano de corte en espacio de mundo según la posición del anillo láser
                     this.el.object3D.updateMatrixWorld(true);
                     this.anilloEscaner.getWorldPosition(this._planePoint);
 
-                    // Vector hacia arriba del modelo en coordenadas de mundo
                     this._planeNormal.set(0, -1, 0).transformDirection(this.el.object3D.matrixWorld).normalize();
                     this.planoCorte.setFromNormalAndCoplanarPoint(this._planeNormal, this._planePoint);
                 }
 
-                // Pulso de brillo Cyberpunk Cian/Magenta en los materiales durante la materialización
                 const pulsoNeon = Math.sin(t * Math.PI);
                 for (let i = 0; i < this.mallasOriginales.length; i++) {
                     const mat = this.mallasOriginales[i];
                     if (mat.emissive) {
                         mat.emissive.setRGB(
-                            0.0 + pulsoNeon * 0.15,
-                            pulsoNeon * 0.85,
-                            pulsoNeon * 0.95
+                            0.05 + pulsoNeon * 0.12,
+                            pulsoNeon * 0.78,
+                            pulsoNeon * 0.92
                         );
-                        mat.emissiveIntensity = 1.0 + pulsoNeon * 1.6;
+                        mat.emissiveIntensity = 0.85 + pulsoNeon * 1.4;
                     }
                 }
             },
@@ -987,7 +865,6 @@
                 const delta = Math.min((timeDelta || 16.6) / 1000, 0.05);
                 this.relojPulso += delta;
 
-                // 1. Sincronizar pose suavizada cuando el sticker está a la vista
                 if (this.rastreandoEnVivo && this.targetObj.visible) {
                     const mat = this.targetObj.matrix;
                     if (mat && mat.elements[15] !== 0) {
@@ -1008,35 +885,21 @@
                         }
                     }
                 } else if (this.estado === 'RETENCION') {
-                    // 2. Si se perdió el sticker, mantener el modelo vivo durante varios segundos
                     const transcurrido = performance.now() - this.tiempoPerdidaInicio;
                     const maxRetencion = window.ficha.tiempoRetencionPerdidaMs || 4500;
-                    const restanteRatio = Math.max(0, 1 - transcurrido / maxRetencion);
 
-                    // Flotación holográfica suave mientras está en retención
-                    this.anclaObj.position.y += Math.sin(this.relojPulso * 3.5) * 0.0004;
-
-                    if (this._retencionProgreso) {
-                        this._retencionProgreso.style.transform = `scaleX(${restanteRatio.toFixed(3)})`;
-                    }
-                    if (this._retencionSegTxt) {
-                        const segRest = Math.max(0, (maxRetencion - transcurrido) / 1000).toFixed(1);
-                        this._retencionSegTxt.textContent = `${segRest}s`;
-                    }
+                    this.anclaObj.position.y += Math.sin(this.relojPulso * 3.2) * 0.00035;
 
                     if (transcurrido >= maxRetencion) {
-                        this._barraRetencionWrap.classList.remove('activo');
                         this.estado = 'DESMATERIALIZANDO';
                         this.aplicarClippingActivo(true);
                     }
                 }
 
-                // 3. Actualizar barrido láser de materialización / desmaterialización
                 if (this.estado === 'MATERIALIZANDO' || this.estado === 'DESMATERIALIZANDO') {
                     this.actualizarEfectoMaterializacion(delta);
                 }
 
-                // 4. Mantener animación del GLB en loop continuo
                 if (this.mixer) {
                     this.mixer.update(delta);
                 } else if (this.giroRespaldo && this.contenedor) {
@@ -1049,83 +912,35 @@
 
 <body>
 
-    <div class="cyber-overlay"></div>
     <div id="flashPantalla"></div>
 
-    <!-- BARRA SUPERIOR HUD CYBERPUNK -->
+    <!-- BARRA SUPERIOR MINIMALISTA -->
     <div class="top-bar">
-        <div class="hud-status-wrap">
-            <div id="estadoCarga">INICIANDO ÓPTICA NEURAL...</div>
-            <div id="barraRetencionWrap">
-                <div class="retencion-label">
-                    <span>HOLD BUFFER // SEÑAL RETENIDA</span>
-                    <span id="retencionSegTxt">4.5s</span>
-                </div>
-                <div class="retencion-pista">
-                    <div id="retencionProgreso"></div>
-                </div>
-            </div>
+        <div class="status-pill" id="statusPill">
+            <span class="status-dot"></span>
+            <span id="estadoCarga">Iniciando...</span>
         </div>
-
-        <div class="top-actions">
-            <button id="btnAbrirQR" class="btn-hud-top" aria-label="Generar QR Cyberpunk">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
-                    <path d="M14 14h3v3h-3zM18 14h3v3h-3zM14 18h3v3h-3zM18 18h3v3h-3z"></path>
-                </svg>
-                <span>QR</span>
-            </button>
-            <button id="btnAbrirFicha" class="btn-hud-top" aria-label="Información de la pieza">INFO</button>
-        </div>
+        <button id="btnAbrirFicha" aria-label="Información de la pieza">i</button>
     </div>
 
-    <!-- GUÍA DE ESCANEO CON SILUETA DEL STICKER GUERRERO DEMONIO -->
+    <!-- GUÍA DE ESCANEO ORGÁNICA SIN TEXTO -->
     <div id="ui-escaneo">
         <div class="marco-escaner" id="marcoEscaner">
-            <div class="esquina-hud tl"></div>
-            <div class="esquina-hud tr"></div>
-            <div class="esquina-hud bl"></div>
-            <div class="esquina-hud br"></div>
-
-            <!-- Vector Cyber-Sigilism del Sticker Guerrero Demonio como guía óptica -->
-            <svg class="silueta-sticker-guia" viewBox="0 0 200 240" aria-hidden="true">
-                <g fill="currentColor" stroke="none">
-                    <!-- Cuernos principales superiores -->
-                    <path d="M58,12 C22,38 14,88 38,122 C28,90 34,50 64,18 Z" />
-                    <path d="M142,12 C178,38 186,88 162,122 C172,90 166,50 136,18 Z" />
-                    <!-- Cuernos internos flameados -->
-                    <path d="M74,45 C52,68 54,102 72,126 C66,100 68,72 80,50 Z" />
-                    <path d="M126,45 C148,68 146,102 128,126 C134,100 132,72 120,50 Z" />
-                    <!-- Picos laterales y arcos oculares -->
-                    <path d="M12,92 C36,96 52,114 62,138 L94,132 L100,112 L106,132 L138,138 C148,114 164,96 188,92 C166,106 154,126 146,148 L100,144 L54,148 C46,126 34,106 12,92 Z" />
-                    <!-- Mandíbula y colmillos inferiores cyber-sigil -->
-                    <path d="M48,148 L86,204 L100,188 L114,204 L152,148 L138,146 L108,188 L100,164 L92,188 L62,146 Z" />
-                    <path d="M64,185 C62,212 78,228 96,232 C82,220 74,204 74,185 Z" />
-                    <path d="M136,185 C138,212 122,228 104,232 C118,220 126,204 126,185 Z" />
-                </g>
-            </svg>
-
             <div class="linea-escaner"></div>
-            <div class="check-detectado">TARGET LOCKED // AR</div>
-        </div>
-        <div class="instruccion-ar" id="instruccionAR">
-            ESCANEA EL STICKER // GUERRERO DEMONIO
         </div>
     </div>
 
-    <!-- CONTROLES DE CAPTURA (FOTO, VIDEO, CAMBIO DE CÁMARA) -->
+    <!-- CONTROLES DE CAPTURA -->
     <div class="contenedor-controles">
         <div id="badgeTiempo">
             <span class="punto-parpadeo"></span>
-            <span id="textoTiempo">REC 00:00</span>
+            <span id="textoTiempo">00:00</span>
         </div>
 
         <div class="dock-captura">
             <button class="btn-icono" id="btnFoto" aria-label="Tomar foto">
                 <div class="nucleo-foto">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
                         <circle cx="12" cy="13" r="4"></circle>
                     </svg>
@@ -1137,7 +952,7 @@
             </button>
 
             <button class="btn-icono" id="btnCambiarCamara" aria-label="Cambiar cámara">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"></path>
                     <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
                 </svg>
@@ -1149,38 +964,14 @@
     <div id="modalPreview">
         <div class="tarjeta-preview">
             <div class="cabecera-preview">
-                <span id="tituloPreview">CAPTURA // LISTA</span>
+                <span id="tituloPreview">Captura lista</span>
                 <span id="pesoArchivo">0 KB</span>
             </div>
             <div class="contenedor-media" id="contenedorMedia"></div>
             <div class="acciones-preview">
                 <button class="btn-modal" id="btnCerrarPreview">✕</button>
-                <button class="btn-modal" id="btnCompartir">COMPARTIR</button>
-                <button class="btn-modal" id="btnDescargar">⬇ GUARDAR</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL GENERADOR DE QR CYBERPUNK CON EL DISEÑO DEL STICKER -->
-    <div id="modalQR">
-        <div class="tarjeta-preview">
-            <div class="cabecera-preview">
-                <span>QR CYBERPUNK // TORI MASK</span>
-                <button class="btn-modal" id="btnCerrarQR" style="flex:0 0 auto;padding:6px 12px;">✕</button>
-            </div>
-            <div class="qr-canvas-box">
-                <canvas id="qrCanvas" width="960" height="1160"></canvas>
-            </div>
-            <div class="qr-field">
-                <label for="qrUrlInput">URL DE LA EXPERIENCIA WEBAR</label>
-                <input type="url" id="qrUrlInput" spellcheck="false">
-            </div>
-            <div class="qr-tools-row">
-                <button type="button" class="btn-qr-tool" id="btnSubirLogoQR">CARGAR IMAGEN STICKER</button>
-                <input type="file" id="inputLogoQR" accept="image/*" style="display:none">
-            </div>
-            <div class="acciones-preview">
-                <button class="btn-modal" id="btnDescargarQR">⬇ DESCARGAR QR PNG</button>
+                <button class="btn-modal" id="btnCompartir">Compartir</button>
+                <button class="btn-modal" id="btnDescargar">⬇ Guardar</button>
             </div>
         </div>
     </div>
@@ -1192,25 +983,25 @@
                 <span class="badge-categoria" id="uiCategoria"></span>
                 <h1 class="titulo-obra" id="uiTitulo"></h1>
             </div>
-            <button class="boton-cerrar-ficha" id="btnCerrarFicha">CERRAR ✕</button>
+            <button class="boton-cerrar-ficha" id="btnCerrarFicha">Cerrar</button>
         </div>
 
         <div class="datos-grid">
             <div>
-                <span class="etiqueta">AUTOR // NODO</span>
+                <span class="etiqueta">AUTOR</span>
                 <div class="valor" id="uiAutor"></div>
             </div>
             <div>
-                <span class="etiqueta">CICLO // AÑO</span>
+                <span class="etiqueta">AÑO</span>
                 <div class="valor" id="uiAnio"></div>
             </div>
             <div style="grid-column: span 2;">
-                <span class="etiqueta">RED // UBICACIÓN</span>
+                <span class="etiqueta">UBICACIÓN</span>
                 <div class="valor" id="uiUbicacion"></div>
-                <a id="botonMapa" href="#" target="_blank" rel="noopener noreferrer">ABRIR COORDENADAS EN MAPS</a>
+                <a id="botonMapa" href="#" target="_blank" rel="noopener noreferrer">VER UBICACIÓN EN GOOGLE MAPS</a>
             </div>
         </div>
-        <span class="etiqueta">REGISTRO // DESCRIPCIÓN</span>
+        <span class="etiqueta">DESCRIPCIÓN</span>
         <p class="historia-texto" id="uiHistoria"></p>
     </section>
 
@@ -1227,19 +1018,16 @@
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
-        <!-- Iluminación con acentos Cyberpunk (Cian + Magenta + Luz principal) -->
-        <a-light type="hemisphere" color="#e8faff" groundColor="#241634" intensity="1.0"></a-light>
-        <a-light type="ambient" color="#ffffff" intensity="1.05"></a-light>
-        <a-light type="directional" color="#ffffff" intensity="2.1" position="1.5 2.5 2"></a-light>
-        <a-light type="directional" color="#00f3ff" intensity="1.15" position="-2.0 1.2 1.5"></a-light>
-        <a-light type="directional" color="#ff0055" intensity="0.95" position="2.0 -1.2 1.2"></a-light>
+        <a-light type="hemisphere" color="#e8faff" groundColor="#241634" intensity="1.05"></a-light>
+        <a-light type="ambient" color="#ffffff" intensity="1.1"></a-light>
+        <a-light type="directional" color="#ffffff" intensity="2.0" position="1.5 2.5 2"></a-light>
+        <a-light type="directional" color="#00f3ff" intensity="1.1" position="-2.0 1.2 1.5"></a-light>
+        <a-light type="directional" color="#ff2a75" intensity="0.9" position="2.0 -1.2 1.2"></a-light>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-        <!-- Objetivo de rastreo de MindAR -->
         <a-entity mindar-image-target="targetIndex: 0" id="objetivoAR"></a-entity>
 
-        <!-- Ancla estabilizada independiente que retiene el modelo varios segundos si se pierde el target -->
         <a-entity id="anclaEstableAR">
             <a-entity
                 id="entidadModelo"
@@ -1252,7 +1040,7 @@
     </a-scene>
 
     <!-- ===================================================== -->
-    <!-- LÓGICA DE INTERFAZ, CÁMARA, GRABACIÓN Y QR CYBERPUNK  -->
+    <!-- LÓGICA DE INTERFAZ, CÁMARA Y GRABACIÓN                -->
     <!-- ===================================================== -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -1303,43 +1091,37 @@
             btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
-            // 4. Detección con feedback visual y sincronización con el buffer de retención
+            // 4. Detección visual
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
-            const instruccionAR = document.getElementById("instruccionAR");
             const estadoCarga = document.getElementById("estadoCarga");
+            const statusPill = document.getElementById("statusPill");
 
             let timeoutOcultarUI = null;
 
             objetivoAR.addEventListener("targetFound", () => {
                 clearTimeout(timeoutOcultarUI);
                 marcoEscaner.classList.add("detectado");
-                instruccionAR.classList.add("detectado");
-                instruccionAR.textContent = "MATERIALIZANDO // GUERRERO DEMONIO";
-                btnAbrirFicha.style.display = "inline-flex";
-                if (navigator.vibrate) { try { navigator.vibrate([25, 40, 25]); } catch (e) {} }
+                btnAbrirFicha.style.display = "flex";
+                if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
 
                 timeoutOcultarUI = setTimeout(() => {
                     uiEscaneo.style.opacity = "0";
-                }, 550);
+                }, 450);
             });
 
-            // Solo vuelve a mostrar la retícula de escaneo cuando termina el tiempo de retención y se desmaterializa
             window.notificarPerdidaDefinitivaUI = () => {
                 clearTimeout(timeoutOcultarUI);
                 uiEscaneo.style.opacity = "1";
                 marcoEscaner.classList.remove("detectado");
-                instruccionAR.classList.remove("detectado");
-                instruccionAR.textContent = "ESCANEA EL STICKER // GUERRERO DEMONIO";
                 panelInferior.classList.remove("visible");
                 btnAbrirFicha.style.display = "none";
-                estadoCarga.textContent = "SYS.READY // ESCANEA EL STICKER";
-                estadoCarga.style.borderColor = "rgba(0, 243, 255, 0.45)";
-                estadoCarga.style.color = "#00f3ff";
+                statusPill.classList.remove("activo", "retencion");
+                estadoCarga.textContent = "Listo para escanear";
             };
 
-            // 5. Cambio de cámara con respaldo
+            // 5. Cambio de cámara
             const btnCambiarCamara = document.getElementById("btnCambiarCamara");
 
             function invalidarRectsCompositor() {
@@ -1521,13 +1303,13 @@
                 btnVideo.classList.add("grabando");
                 badgeTiempo.classList.add("activo");
                 segundosGrabados = 0;
-                textoTiempo.textContent = "REC 00:00";
+                textoTiempo.textContent = "00:00";
 
                 intervaloTiempo = setInterval(() => {
                     segundosGrabados++;
                     const min = String(Math.floor(segundosGrabados / 60)).padStart(2, "0");
                     const seg = String(segundosGrabados % 60).padStart(2, "0");
-                    textoTiempo.textContent = `REC ${min}:${seg}`;
+                    textoTiempo.textContent = `${min}:${seg}`;
 
                     if (window.ficha.maxDuracionVideoSeg && segundosGrabados >= window.ficha.maxDuracionVideoSeg) {
                         detenerGrabacion();
@@ -1572,7 +1354,7 @@
                 }
             });
 
-            // 8. Modal de vista previa, guardado y descarga
+            // 8. Modal de vista previa
             const modalPreview = document.getElementById("modalPreview");
             const contenedorMedia = document.getElementById("contenedorMedia");
             const pesoArchivo = document.getElementById("pesoArchivo");
@@ -1601,7 +1383,7 @@
                 const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
 
                 if (tipo === "foto") {
-                    tituloPreview.textContent = "FOTO AR // CYBER-SIGIL";
+                    tituloPreview.textContent = "Fotografía AR";
                     nombreArchivoActual = `torimask-ar-${timestamp}.jpg`;
                     archivoActualObj = new File([blob], nombreArchivoActual, { type: "image/jpeg" });
 
@@ -1609,7 +1391,7 @@
                     img.src = urlArchivoActual;
                     contenedorMedia.appendChild(img);
                 } else {
-                    tituloPreview.textContent = "VIDEO AR // HD";
+                    tituloPreview.textContent = "Video AR";
                     const esMp4 = blob.type && blob.type.includes("mp4");
                     const ext = esMp4 ? "mp4" : "webm";
                     const mimeLimpio = esMp4 ? "video/mp4" : "video/webm";
@@ -1661,288 +1443,6 @@
                 document.body.appendChild(a);
                 a.click();
                 setTimeout(() => document.body.removeChild(a), 200);
-            });
-
-            // ============================================================
-            // 9. GENERADOR DE QR CYBERPUNK CON EL DISEÑO DEL STICKER
-            // ============================================================
-            const modalQR = document.getElementById("modalQR");
-            const btnAbrirQR = document.getElementById("btnAbrirQR");
-            const btnCerrarQR = document.getElementById("btnCerrarQR");
-            const qrCanvas = document.getElementById("qrCanvas");
-            const qrUrlInput = document.getElementById("qrUrlInput");
-            const btnSubirLogoQR = document.getElementById("btnSubirLogoQR");
-            const inputLogoQR = document.getElementById("inputLogoQR");
-            const btnDescargarQR = document.getElementById("btnDescargarQR");
-
-            let stickerImgCargada = null;
-
-            // Intentar precargar ./kimage (1).png si está en el proyecto
-            const imgPreload = new Image();
-            imgPreload.crossOrigin = "anonymous";
-            imgPreload.onload = () => {
-                stickerImgCargada = imgPreload;
-                if (modalQR.classList.contains("activo")) dibujarQRCyberpunk(qrUrlInput.value);
-            };
-            imgPreload.src = window.ficha.stickerLogo;
-
-            // Dibuja la reconstrucción vectorial exacta del Sticker Cyber-Sigilism (Guerrero Demonio)
-            function dibujarEmblemaDemonioVector(ctx, cx, cy, radio) {
-                ctx.save();
-                ctx.translate(cx, cy);
-                const s = radio / 115;
-                ctx.scale(s, s);
-
-                // Fondo circular blanco puro como el sticker original con anillo doble cyberpunk
-                ctx.fillStyle = "#ffffff";
-                ctx.beginPath();
-                ctx.arc(0, 0, 112, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.lineWidth = 6;
-                ctx.strokeStyle = "#05070e";
-                ctx.stroke();
-
-                ctx.lineWidth = 3;
-                ctx.strokeStyle = "#00f3ff";
-                ctx.beginPath();
-                ctx.arc(0, 0, 118, 0, Math.PI * 2);
-                ctx.stroke();
-
-                // Si el usuario subió o tiene kimage (1).png en la carpeta, dibujarla directamente
-                if (stickerImgCargada && stickerImgCargada.complete && stickerImgCargada.naturalWidth > 0) {
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 106, 0, Math.PI * 2);
-                    ctx.clip();
-                    ctx.drawImage(stickerImgCargada, -96, -104, 192, 208);
-                    ctx.restore();
-                    ctx.restore();
-                    return;
-                }
-
-                // Trazo simétrico negro de alta precisión (fiel al sticker kimage (1).png)
-                ctx.fillStyle = "#05070e";
-                ctx.strokeStyle = "#05070e";
-                ctx.lineCap = "round";
-                ctx.lineJoin = "miter";
-
-                for (const dir of [-1, 1]) {
-                    ctx.save();
-                    ctx.scale(dir, 1);
-
-                    // 1. Cuerno principal exterior curvado hacia adentro
-                    ctx.beginPath();
-                    ctx.moveTo(28, -96);
-                    ctx.bezierCurveTo(68, -76, 78, -28, 54, 14);
-                    ctx.bezierCurveTo(46, 26, 38, 34, 34, 44);
-                    ctx.bezierCurveTo(44, 20, 56, -24, 44, -60);
-                    ctx.bezierCurveTo(38, -76, 32, -86, 28, -96);
-                    ctx.fill();
-
-                    // 2. Rama secundaria externa del cuerno
-                    ctx.beginPath();
-                    ctx.moveTo(54, -74);
-                    ctx.bezierCurveTo(78, -50, 74, -12, 52, 18);
-                    ctx.bezierCurveTo(62, -12, 64, -44, 54, -74);
-                    ctx.fill();
-
-                    // 3. Cuerno interno flameado cyber-sigil
-                    ctx.beginPath();
-                    ctx.moveTo(22, -64);
-                    ctx.bezierCurveTo(44, -44, 46, -10, 26, 16);
-                    ctx.bezierCurveTo(18, 26, 12, 20, 16, 8);
-                    ctx.bezierCurveTo(30, -12, 30, -40, 22, -64);
-                    ctx.fill();
-
-                    // 4. Espina lateral superior (alas afiladas)
-                    ctx.beginPath();
-                    ctx.moveTo(46, -16);
-                    ctx.bezierCurveTo(68, -24, 86, -22, 96, -12);
-                    ctx.bezierCurveTo(80, -14, 64, -8, 52, 6);
-                    ctx.closePath();
-                    ctx.fill();
-
-                    // 5. Arco supraorbital y cuenca ocular demoníaca
-                    ctx.beginPath();
-                    ctx.moveTo(4, -8);
-                    ctx.bezierCurveTo(18, -2, 36, -6, 56, -22);
-                    ctx.bezierCurveTo(48, 2, 32, 16, 10, 14);
-                    ctx.closePath();
-                    ctx.fill();
-
-                    // 6. Pómulo y espina lateral inferior barrida hacia afuera
-                    ctx.beginPath();
-                    ctx.moveTo(42, 16);
-                    ctx.bezierCurveTo(62, 32, 76, 52, 94, 54);
-                    ctx.bezierCurveTo(72, 58, 56, 44, 36, 26);
-                    ctx.closePath();
-                    ctx.fill();
-
-                    // 7. Entramado tribal de la mandíbula y colmillos centrales
-                    ctx.beginPath();
-                    ctx.moveTo(6, 12);
-                    ctx.lineTo(44, 24);
-                    ctx.lineTo(18, 72);
-                    ctx.lineTo(4, 56);
-                    ctx.lineTo(28, 28);
-                    ctx.lineTo(4, 22);
-                    ctx.closePath();
-                    ctx.fill();
-
-                    // 8. Colmillo curvo inferior de la barbilla
-                    ctx.beginPath();
-                    ctx.moveTo(28, 48);
-                    ctx.bezierCurveTo(40, 72, 28, 94, 6, 98);
-                    ctx.bezierCurveTo(20, 88, 26, 70, 20, 52);
-                    ctx.closePath();
-                    ctx.fill();
-
-                    // 9. Púas centrales del puente nasal
-                    ctx.beginPath();
-                    ctx.moveTo(2, -32);
-                    ctx.quadraticCurveTo(12, -14, 4, 6);
-                    ctx.quadraticCurveTo(6, -14, 2, -32);
-                    ctx.fill();
-
-                    ctx.restore();
-                }
-
-                ctx.restore();
-            }
-
-            function dibujarQRCyberpunk(urlTexto) {
-                const ctx = qrCanvas.getContext("2d");
-                const W = qrCanvas.width;
-                const H = qrCanvas.height;
-                const url = (urlTexto || location.href).trim();
-
-                // Fondo oscuro Cyberpunk
-                const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-                bgGrad.addColorStop(0, "#05070e");
-                bgGrad.addColorStop(1, "#0b1124");
-                ctx.fillStyle = bgGrad;
-                ctx.fillRect(0, 0, W, H);
-
-                // Marco exterior biselado Neon Cyan & Magenta
-                ctx.strokeStyle = "#00f3ff";
-                ctx.lineWidth = 5;
-                ctx.strokeRect(28, 28, W - 56, H - 56);
-
-                ctx.strokeStyle = "#ff0055";
-                ctx.lineWidth = 2;
-                ctx.strokeRect(40, 40, W - 80, H - 80);
-
-                // Encabezado Cyberpunk
-                ctx.fillStyle = "#fcee0a";
-                ctx.font = "900 22px 'Orbitron', sans-serif";
-                ctx.textAlign = "center";
-                ctx.fillText("STICKERS RA // EXPERIENCIA WEBAR", W / 2, 92);
-
-                ctx.fillStyle = "#00f3ff";
-                ctx.font = "900 44px 'Orbitron', sans-serif";
-                ctx.fillText(window.ficha.titulo.toUpperCase(), W / 2, 146);
-
-                // Placa blanca de alto contraste para lectura instantánea del QR en cualquier cámara
-                const qrBoxSize = 680;
-                const qrBoxX = (W - qrBoxSize) / 2;
-                const qrBoxY = 185;
-
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
-                ctx.lineWidth = 6;
-                ctx.strokeStyle = "#00f3ff";
-                ctx.strokeRect(qrBoxX, qrBoxY, qrBoxSize, qrBoxSize);
-
-                if (typeof qrcode === "function") {
-                    const qr = qrcode(0, "H");
-                    qr.addData(url);
-                    qr.make();
-
-                    const count = qr.getModuleCount();
-                    const margin = 44;
-                    const drawSize = qrBoxSize - margin * 2;
-                    const cell = drawSize / count;
-                    const startX = qrBoxX + margin;
-                    const startY = qrBoxY + margin;
-
-                    const centerR = count * 0.17;
-                    const mid = count / 2;
-
-                    for (let r = 0; r < count; r++) {
-                        for (let c = 0; c < count; c++) {
-                            if (!qr.isDark(r, c)) continue;
-
-                            // Dejar despejado el círculo central para el emblema del sticker
-                            const dist = Math.hypot(r + 0.5 - mid, c + 0.5 - mid);
-                            if (dist < centerR) continue;
-
-                            const isFinder = (r < 7 && c < 7) || (r < 7 && c >= count - 7) || (r >= count - 7 && c < 7);
-                            ctx.fillStyle = isFinder ? "#081226" : "#05070e";
-
-                            const x = startX + c * cell;
-                            const y = startY + r * cell;
-                            ctx.fillRect(x + 0.3, y + 0.3, cell - 0.6, cell - 0.6);
-                        }
-                    }
-                }
-
-                // Dibujar el diseño del sticker en el centro del QR
-                dibujarEmblemaDemonioVector(ctx, W / 2, qrBoxY + qrBoxSize / 2, 118);
-
-                // Pie del póster QR
-                ctx.fillStyle = "#e2f6ff";
-                ctx.font = "700 24px 'Rajdhani', sans-serif";
-                ctx.fillText("1. ESCANEA EL QR   //   2. APUNTA AL STICKER", W / 2, 935);
-
-                ctx.fillStyle = "#ff0055";
-                ctx.font = "700 20px 'Share Tech Mono', monospace";
-                ctx.fillText(`${window.ficha.autor.toUpperCase()} · ${window.ficha.ubicacion.toUpperCase()} · ${window.ficha.anio}`, W / 2, 985);
-
-                ctx.fillStyle = "rgba(0, 243, 255, 0.7)";
-                ctx.font = "400 16px 'Share Tech Mono', monospace";
-                ctx.fillText("SYS.ID // TORI-MASK-AR-HOLOGRAM", W / 2, 1085);
-            }
-
-            btnAbrirQR.addEventListener("click", () => {
-                if (!qrUrlInput.value) {
-                    qrUrlInput.value = location.href;
-                }
-                dibujarQRCyberpunk(qrUrlInput.value);
-                modalQR.classList.add("activo");
-            });
-
-            btnCerrarQR.addEventListener("click", () => {
-                modalQR.classList.remove("activo");
-            });
-
-            qrUrlInput.addEventListener("input", (e) => {
-                dibujarQRCyberpunk(e.target.value);
-            });
-
-            btnSubirLogoQR.addEventListener("click", () => inputLogoQR.click());
-
-            inputLogoQR.addEventListener("change", (e) => {
-                const file = e.target.files && e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        stickerImgCargada = img;
-                        dibujarQRCyberpunk(qrUrlInput.value);
-                    };
-                    img.src = ev.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
-
-            btnDescargarQR.addEventListener("click", () => {
-                dibujarQRCyberpunk(qrUrlInput.value);
-                const link = document.createElement("a");
-                link.download = "QR_Cyberpunk_ToriMask.png";
-                link.href = qrCanvas.toDataURL("image/png");
-                link.click();
             });
         });
     </script>
