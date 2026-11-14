@@ -8,7 +8,7 @@
     <title>Experiencia AR — Tori Mask (Guerrero Demonio)</title>
 
     <!-- ===================================================== -->
-    <!-- 1. CONFIGURACIÓN GENERAL DEL PROYECTO WEBAR           -->
+    <!-- 1. CONFIGURACIÓN Y GESTOR DE CÁMARA A PRUEBA DE FALLOS-->
     <!-- ===================================================== -->
     <script>
         window.ficha = {
@@ -16,15 +16,15 @@
             marcadorMind: "./targets/imagen_rastreo.mind",
             instagramUrl: "https://www.instagram.com/asteroidae9999/?hl=en",
 
-            // Escala calibrada + auto-encuadre para que siempre se vea el modelo completo
-            escala: 2.2,
+            // Escala base + auto-encuadre para ver siempre el modelo 100% completo
+            escala: 1.85,
             autoEncuadreEspacial: true,
-            margenPantalla: 0.82,          // Usa hasta el 82% del espacio AR visible sin cortarse
+            margenPantalla: 0.78,
             rotacionInicial: "0 0 0",
 
-            // ===== Velocidad de Animación Ágil y Fluida =====
-            velocidadAnimacion: 1.0,       // 1.0 = Velocidad nativa fluida y constante
-            velocidadGiroRespaldo: 0.95,   // Radianes/seg si el GLB no trae pista o en modo respaldo
+            // ===== Velocidad de Animación Fluida (60 FPS) =====
+            velocidadAnimacion: 1.0,
+            velocidadGiroRespaldo: 0.95,
 
             // ===== Acabado Negro Metalizado para el Tribal =====
             tribalColorHex: 0x101216,
@@ -33,9 +33,9 @@
 
             // ===== Estabilidad de Seguimiento y Materialización =====
             tiempoRetencionPerdidaMs: 5000,
-            duracionMaterializacionMs: 950,
-            duracionDesmaterializacionMs: 400,
-            suavizadoPose: 26.0,           // Respuesta rápida y sin lag al mover el teléfono
+            duracionMaterializacionMs: 900,
+            duracionDesmaterializacionMs: 380,
+            suavizadoPose: 25.0,
 
             // ===== Calidad de Captura Multimedia =====
             calidadFotoJPEG: 0.92,
@@ -57,24 +57,100 @@
         };
 
         window.modoCamaraActual = "environment";
+        window.__streamCamaraAR = null;
+        window.__promesaStreamAR = null;
 
+        // Vincula el stream de cámara al visor base y a cualquier <video> de MindAR
+        window.vincularStreamAVideos = function (stream) {
+            if (!stream) return;
+            window.__streamCamaraAR = stream;
+
+            const btnPermiso = document.getElementById("btnPermisoCamara");
+            if (btnPermiso) btnPermiso.style.display = "none";
+
+            const videos = document.querySelectorAll("video");
+            videos.forEach((vid) => {
+                vid.setAttribute("playsinline", "");
+                vid.setAttribute("webkit-playsinline", "");
+                vid.setAttribute("muted", "");
+                vid.muted = true;
+                if (vid.srcObject !== stream) {
+                    vid.srcObject = stream;
+                }
+                const playProm = vid.play();
+                if (playProm && typeof playProm.catch === "function") {
+                    playProm.catch(() => {});
+                }
+            });
+        };
+
+        // Interceptor getUserMedia con triple contingencia (nunca falla por OverconstrainedError)
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            const getUserMediaOriginal = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+            const getUserMediaNativo = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+
+            window.solicitarStreamCamaraSeguro = async function (constraintsOriginales) {
+                // Reutilizar stream activo si ya está encendido para evitar bloqueo de hardware
+                if (window.__streamCamaraAR && window.__streamCamaraAR.active) {
+                    const tracks = window.__streamCamaraAR.getVideoTracks();
+                    if (tracks.length > 0 && tracks[0].readyState === "live") {
+                        window.vincularStreamAVideos(window.__streamCamaraAR);
+                        return window.__streamCamaraAR;
+                    }
+                }
+
+                if (window.__promesaStreamAR) {
+                    return window.__promesaStreamAR;
+                }
+
+                window.__promesaStreamAR = (async () => {
+                    const intentos = [
+                        // Intento 1: Cámara trasera HD sin límite rígido de frameRate que bloquee móviles
+                        {
+                            audio: false,
+                            video: {
+                                facingMode: { ideal: window.modoCamaraActual || "environment" },
+                                width: { ideal: window.ficha.camara.width || 1280 },
+                                height: { ideal: window.ficha.camara.height || 720 }
+                            }
+                        },
+                        // Intento 2: Cámara trasera estándar sin forzar resolución
+                        {
+                            audio: false,
+                            video: { facingMode: "environment" }
+                        },
+                        // Intento 3: Cualquier cámara disponible en el dispositivo (móvil o PC)
+                        {
+                            audio: false,
+                            video: true
+                        }
+                    ];
+
+                    let ultimoError = null;
+                    for (let i = 0; i < intentos.length; i++) {
+                        try {
+                            const stream = await getUserMediaNativo(intentos[i]);
+                            window.vincularStreamAVideos(stream);
+                            window.__promesaStreamAR = null;
+                            return stream;
+                        } catch (err) {
+                            ultimoError = err;
+                        }
+                    }
+
+                    window.__promesaStreamAR = null;
+                    const btnPermiso = document.getElementById("btnPermisoCamara");
+                    if (btnPermiso) btnPermiso.style.display = "inline-flex";
+                    throw ultimoError || new Error("No se pudo iniciar la cámara");
+                })();
+
+                return window.__promesaStreamAR;
+            };
+
             navigator.mediaDevices.getUserMedia = function (constraints) {
                 if (constraints && constraints.video) {
-                    const videoBase = typeof constraints.video === "object" ? constraints.video : {};
-                    constraints = {
-                        ...constraints,
-                        video: {
-                            ...videoBase,
-                            facingMode: { ideal: "environment" },
-                            width: { ideal: window.ficha.camara.width },
-                            height: { ideal: window.ficha.camara.height },
-                            frameRate: { ideal: 30, max: 60 }
-                        }
-                    };
+                    return window.solicitarStreamCamaraSeguro(constraints);
                 }
-                return getUserMediaOriginal(constraints);
+                return getUserMediaNativo(constraints);
             };
         }
     </script>
@@ -87,7 +163,7 @@
     <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 
     <!-- ===================================================== -->
-    <!-- 3. ESTILOS UI/UX — ESPACIO AR 100% HABILITADO         -->
+    <!-- 3. ESTILOS UI/UX — CÁMARA Y ESPACIO AR 100% VISIBLES  -->
     <!-- ===================================================== -->
     <style>
         :root {
@@ -108,39 +184,63 @@
             user-select: none;
         }
 
-        html, body {
+        /* CRÍTICO: body debe tener background: transparent para NO tapar el <video> de MindAR */
+        html {
             margin: 0;
             padding: 0;
-            width: 100vw;
-            height: 100vh;
-            height: 100dvh;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #05070d;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #05070d;
+            background: transparent !important;
             color: var(--text-primary);
             touch-action: none;
         }
 
-        /* Habilitar el 100% del espacio AR para A-Frame y el canvas WebGL sin recortes */
+        /* Garantiza que tanto el video base como el video de MindAR sean siempre visibles */
+        #videoCamaraBase,
+        body > video {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            min-width: 100vw !important;
+            min-height: 100vh !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            transform: translate(-50%, -50%) !important;
+            object-fit: cover !important;
+            z-index: -1 !important;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: none !important;
+        }
+
+        /* Escena A-Frame transparente sobre el video en todo el espacio de la pantalla */
         a-scene#escenaAR {
             position: fixed !important;
             inset: 0 !important;
             width: 100vw !important;
             height: 100vh !important;
-            height: 100dvh !important;
-            z-index: 1;
-            overflow: visible !important;
+            z-index: 2 !important;
+            background: transparent !important;
         }
 
-        a-scene#escenaAR .a-canvas {
-            position: fixed !important;
-            inset: 0 !important;
+        a-scene#escenaAR canvas.a-canvas {
             width: 100vw !important;
             height: 100vh !important;
-            height: 100dvh !important;
+            background: transparent !important;
         }
 
-        /* Viñeta periférica ultraligera que no obstruye el área AR */
         .spatial-vignette {
             position: fixed;
             inset: 0;
@@ -274,8 +374,29 @@
             font-size: 13px;
         }
 
+        /* Botón central de desbloqueo si el navegador requiere toque manual para la cámara */
+        #btnPermisoCamara {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 350;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 24px;
+            border-radius: 999px;
+            background: rgba(10, 16, 30, 0.9);
+            color: var(--accent-cyan);
+            border: 1.5px solid var(--accent-cyan);
+            box-shadow: 0 0 28px rgba(0, 243, 255, 0.35);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
         /* ===================================================== */
-        /* RETÍCULA DE ESCANEO SIN SOMBRA PESADA (FULL AR VIEW)  */
+        /* RETÍCULA DE ESCANEO LIGERA                            */
         /* ===================================================== */
         #ui-escaneo {
             position: fixed;
@@ -736,13 +857,13 @@
     </style>
 
     <!-- ===================================================== -->
-    <!-- 4. MOTOR AR: FRUSTUM EXPANDIDO + AUTO-FIT + 60 FPS    -->
+    <!-- 4. MOTOR AR: ENCUADRE COMPLETO + CERO CORTES + 60 FPS -->
     <!-- ===================================================== -->
     <script>
         async function obtenerUrlConCache(url) {
             if (!('caches' in window)) return url;
             try {
-                const cache = await caches.open('torimask-ar-cache-v2');
+                const cache = await caches.open('torimask-ar-cache-v3');
                 let response = await cache.match(url);
                 if (!response) {
                     response = await fetch(url, { cache: 'force-cache' });
@@ -783,8 +904,7 @@
         };
 
         // ============================================================
-        // COMPOSITOR: une cámara + 3D en `tock` (justo tras WebGL render)
-        // sin requerir preserveDrawingBuffer permanente
+        // COMPOSITOR MULTIMEDIA (CAPTURA DE CÁMARA + MODELO 3D)
         // ============================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
@@ -803,10 +923,18 @@
 
             invalidarRects: function () { this._rects = null; },
 
-            _getRects: function () {
-                if (this._rects) return this._rects;
+            _obtenerVideoActivo: function () {
+                const videos = document.querySelectorAll('video');
+                for (let i = 0; i < videos.length; i++) {
+                    if (videos[i].readyState >= 2 && videos[i].videoWidth > 0) {
+                        return videos[i];
+                    }
+                }
+                return document.getElementById('videoCamaraBase') || videos[0] || null;
+            },
 
-                const video = document.querySelector('video');
+            _getRects: function () {
+                const video = this._obtenerVideoActivo();
                 const glCanvas = this.el.canvas;
                 if (!glCanvas) return null;
 
@@ -819,8 +947,7 @@
 
                 const cRect = glCanvas.getBoundingClientRect();
 
-                this._rects = { video, glCanvas, vRect, cRect, vw, vh };
-                return this._rects;
+                return { video, glCanvas, vRect, cRect, vw, vh };
             },
 
             tock: function (time) {
@@ -888,8 +1015,7 @@
         });
 
         // ============================================================
-        // COMPONENTE PRINCIPAL: SIN PLANOS DE CORTE + FRUSTUM COMPLETO
-        // + AUTO-ENCUADRE ESPACIAL + VELOCIDAD NATIVA FLUIDA
+        // COMPONENTE PRINCIPAL: SIN PLANOS DE CORTE + ENCUADRE SEGURO
         // ============================================================
         AFRAME.registerComponent('modelo-cyberpunk-ar', {
             init: function () {
@@ -921,9 +1047,9 @@
                 this.factorAutoFit = 1.0;
                 this.anguloGiroLento = 0;
 
-                this.minYLocal = -1.1;
-                this.maxYLocal = 1.1;
-                this.radioModeloLocal = 1.1;
+                this.radioModeloLocal = 1.0;
+                this.minYLocal = -1.0;
+                this.maxYLocal = 1.0;
 
                 this._tPos = new THREE.Vector3();
                 this._tQuat = new THREE.Quaternion();
@@ -939,7 +1065,7 @@
                 this.targetObj = targetEl.object3D;
                 this.anclaObj.visible = false;
 
-                // Desactivar localClippingEnabled y sombras para máxima velocidad en GPU móvil
+                // Desactivar planos de corte en GPU para evitar cualquier recorte del modelo
                 const configurarRenderer = () => {
                     if (el.sceneEl && el.sceneEl.renderer) {
                         el.sceneEl.renderer.localClippingEnabled = false;
@@ -1000,13 +1126,10 @@
                     return false;
                 };
 
-                // ============================================================
-                // MODELO 3D PROCEDURAL DE RESPALDO (PARA EL VISUALIZADOR LIVE)
-                // ============================================================
+                // Modelo 3D procedural de respaldo cuando no está el archivo .glb local
                 const construirModeloRespaldoProcedural = () => {
                     const root = new THREE.Group();
 
-                    // 1. Tribal interior en Negro Metalizado (#101216)
                     const matTribal = new THREE.MeshStandardMaterial({
                         name: "tribal_metallic_black",
                         color: window.ficha.tribalColorHex ?? 0x101216,
@@ -1020,8 +1143,6 @@
                     this.materialesAnimables.push(matTribal);
 
                     const grupoTribal = new THREE.Group();
-                    grupoTribal.name = "tribal_inner_sigil";
-
                     const geoCuerno = new THREE.TorusGeometry(0.42, 0.055, 16, 48, Math.PI * 1.15);
                     const cuernoIzq = new THREE.Mesh(geoCuerno, matTribal);
                     cuernoIzq.position.set(-0.22, 0.18, 0);
@@ -1041,7 +1162,6 @@
                     grupoTribal.add(cuernoIzq, cuernoDer, nudoCentral);
                     root.add(grupoTribal);
 
-                    // 2. Acentos Oni / Tori Mask en rojo carmesí
                     const matMascara = new THREE.MeshStandardMaterial({
                         name: "torimask_crimson",
                         color: 0xc81e32,
@@ -1063,7 +1183,6 @@
                     aro2.renderOrder = 1;
                     root.add(aro1, aro2);
 
-                    // 3. Esfera exterior cristalina (depthWrite: false + renderOrder: 2 para no cortar el interior)
                     const matEsfera = new THREE.MeshStandardMaterial({
                         name: "outer_sphere_mask",
                         color: 0xd8f4ff,
@@ -1072,7 +1191,7 @@
                         transparent: true,
                         opacity: 0.22,
                         depthWrite: false,
-                        side: THREE.FrontSide
+                        side: THREE.DoubleSide
                     });
                     matEsfera.userData.origEmissive = matEsfera.emissive.clone();
                     matEsfera.userData.origEmissiveIntensity = 1.0;
@@ -1083,10 +1202,10 @@
                     meshEsfera.renderOrder = 2;
                     root.add(meshEsfera);
 
-                    const escalaObjetivo = window.ficha.escala || 2.2;
+                    const escalaObjetivo = window.ficha.escala || 1.85;
                     root.scale.setScalar(escalaObjetivo * 0.65);
 
-                    this.radioModeloLocal = escalaObjetivo * 0.55;
+                    this.radioModeloLocal = escalaObjetivo * 0.52;
                     this.minYLocal = -this.radioModeloLocal;
                     this.maxYLocal = this.radioModeloLocal;
 
@@ -1128,8 +1247,7 @@
                                 }
                             });
 
-                            // 1. Medir Bounding Box en pose base y a lo largo de la animación
-                            // para garantizar que ningún giro o expansión se salga del espacio AR
+                            // 1. Medir Bounding Box completo incluyendo el ciclo de animación
                             model.updateMatrixWorld(true);
                             const boxGlobal = new THREE.Box3();
                             listaNodos.forEach((n) => boxGlobal.expandByObject(n));
@@ -1147,7 +1265,6 @@
                                     this.actions.push(action);
                                 });
 
-                                // Muestrear 4 instantes del ciclo de animación para cubrir el volumen completo
                                 if (maxDur > 0) {
                                     const muestras = [0, maxDur * 0.25, maxDur * 0.5, maxDur * 0.75];
                                     for (let i = 0; i < muestras.length; i++) {
@@ -1164,8 +1281,7 @@
 
                             if (boxGlobal.isEmpty()) boxGlobal.setFromObject(model);
 
-                            // 2. Configurar materiales SIN planos de corte y ordenando transparencia
-                            // para que la esfera exterior nunca recorte el tribal o la máscara interior
+                            // 2. Configurar materiales con DoubleSide y sin planos de corte
                             const materialesVistos = new Set();
 
                             listaNodos.forEach((node) => {
@@ -1181,6 +1297,7 @@
                                     if (!materialesVistos.has(mat)) {
                                         materialesVistos.add(mat);
                                         mat.clippingPlanes = null;
+                                        mat.side = THREE.DoubleSide;
 
                                         if (esTribal) {
                                             if (mat.color) mat.color.setHex(window.ficha.tribalColorHex ?? 0x101216);
@@ -1189,15 +1306,11 @@
                                             mat.transparent = false;
                                             mat.opacity = 1.0;
                                             mat.depthWrite = true;
-                                            mat.side = THREE.DoubleSide;
                                         } else if (mat.transparent || (mat.opacity !== undefined && mat.opacity < 0.98) || esEsferaCristal) {
-                                            // Evita que la esfera o capas translúcidas escriban en el Z-buffer y corten el interior
                                             mat.depthWrite = false;
-                                            mat.side = THREE.FrontSide;
                                             nodoEsTransparente = true;
                                         } else {
                                             mat.depthWrite = true;
-                                            mat.side = THREE.DoubleSide;
                                         }
 
                                         if (mat.emissive) {
@@ -1214,10 +1327,10 @@
                                 node.renderOrder = nodoEsTransparente ? 2 : 1;
                             });
 
-                            // 3. Centrar en la esfera envolvente diagonal para que al girar 360° nunca se recorte
+                            // 3. Centrar usando la diagonal envolvente 3D para que al girar nunca se recorte
                             const size = boxGlobal.getSize(new THREE.Vector3());
                             const center = boxGlobal.getCenter(new THREE.Vector3());
-                            const diagonalBounding = Math.max(size.length() * 0.72, Math.max(size.x, size.y, size.z));
+                            const maxDim = Math.max(size.x, size.y, size.z, size.length() * 0.72);
 
                             const pivotGroup = new THREE.Group();
                             const offsetGroup = new THREE.Group();
@@ -1225,9 +1338,9 @@
                             offsetGroup.add(model);
                             pivotGroup.add(offsetGroup);
 
-                            const escalaObjetivo = window.ficha.escala || 2.2;
-                            if (Number.isFinite(diagonalBounding) && diagonalBounding > 0.0001) {
-                                const factor = escalaObjetivo / diagonalBounding;
+                            const escalaObjetivo = window.ficha.escala || 1.85;
+                            if (Number.isFinite(maxDim) && maxDim > 0.0001) {
+                                const factor = escalaObjetivo / maxDim;
                                 offsetGroup.position.set(-center.x, -center.y, -center.z);
                                 pivotGroup.scale.setScalar(factor);
                             } else {
@@ -1245,7 +1358,9 @@
                             el.setObject3D('mesh', this.grupoExploracion);
                             this.contenedor = pivotGroup;
 
-                            if (estadoUI) estadoUI.textContent = "Listo para escanear";
+                            if (estadoUI && this.estado === 'OCULTO') {
+                                estadoUI.textContent = "Listo para escanear";
+                            }
                         },
                         undefined,
                         () => {
@@ -1346,10 +1461,10 @@
                     this.anclaObj.visible = true;
 
                     if (esSimulacion) {
-                        // Coloca el modelo centrado frente a la cámara aprovechando todo el espacio AR
-                        this.anclaObj.position.set(0, 0, -3.4);
+                        // Z = -600 está siempre dentro de [near=10, far=10000] tanto en MindAR como en A-Frame
+                        this.anclaObj.position.set(0, 0, -600);
                         this.anclaObj.quaternion.identity();
-                        this.anclaObj.scale.setScalar(1.0);
+                        this.anclaObj.scale.setScalar(260);
                         this.poseInicializada = true;
                     }
 
@@ -1406,27 +1521,6 @@
                 targetEl.addEventListener('targetLost', () => this.perderTarget(false));
             },
 
-            // Expande el frustum (near=0.05, far=500000) conservando el FOV exacto de MindAR
-            ampliarFrustumCamara: function () {
-                const sceneEl = this.el.sceneEl;
-                if (!sceneEl || !sceneEl.camera) return null;
-                const cam = sceneEl.camera;
-                const near = 0.05;
-                const far = 500000;
-                cam.near = near;
-                cam.far = far;
-
-                const p = cam.projectionMatrix && cam.projectionMatrix.elements;
-                if (p && p[0] !== 0) {
-                    p[10] = -(far + near) / (far - near);
-                    p[14] = -(2 * far * near) / (far - near);
-                    if (cam.projectionMatrixInverse) {
-                        cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
-                    }
-                }
-                return p;
-            },
-
             restaurarColoresOriginales: function () {
                 if (this.anilloEscaner) this.anilloEscaner.visible = false;
                 for (let i = 0; i < this.materialesAnimables.length; i++) {
@@ -1441,7 +1535,7 @@
             actualizarEfectoMaterializacion: function (delta) {
                 const THREE = AFRAME.THREE;
                 if (this.estado === 'MATERIALIZANDO') {
-                    const dur = (window.ficha.duracionMaterializacionMs || 950) / 1000;
+                    const dur = (window.ficha.duracionMaterializacionMs || 900) / 1000;
                     this.progresoMat = Math.min(1.0, this.progresoMat + delta / dur);
                     if (this.progresoMat >= 1.0) {
                         this.estado = 'ACTIVO';
@@ -1449,7 +1543,7 @@
                         return;
                     }
                 } else if (this.estado === 'DESMATERIALIZANDO') {
-                    const dur = (window.ficha.duracionDesmaterializacionMs || 400) / 1000;
+                    const dur = (window.ficha.duracionDesmaterializacionMs || 380) / 1000;
                     this.progresoMat = Math.max(0.0, this.progresoMat - delta / dur);
                     if (this.progresoMat <= 0.0) {
                         this.estado = 'OCULTO';
@@ -1489,7 +1583,6 @@
             },
 
             tick: function (time, timeDelta) {
-                const proj = this.ampliarFrustumCamara();
                 if (this.estado === 'OCULTO') return;
 
                 const rawDelta = Math.min(Math.max((timeDelta || 16.6) * 0.001, 0.001), 0.04);
@@ -1497,7 +1590,10 @@
                 const delta = this.smoothDelta;
                 this.relojPulso += delta;
 
-                // 1. Seguir al target de MindAR cuando está visible en cámara
+                const cam = this.el.sceneEl && this.el.sceneEl.camera;
+                const proj = cam && cam.projectionMatrix ? cam.projectionMatrix.elements : null;
+
+                // 1. Seguir al target de MindAR o mantener encuadre en Vista 3D
                 if (this.rastreandoEnVivo && this.targetObj.visible) {
                     const mat = this.targetObj.matrix;
                     if (mat && mat.elements[15] !== 0) {
@@ -1509,7 +1605,7 @@
                                 this.anclaObj.scale.copy(this._tScale);
                                 this.poseInicializada = true;
                             } else {
-                                const k = window.ficha.suavizadoPose || 26.0;
+                                const k = window.ficha.suavizadoPose || 25.0;
                                 const alpha = 1.0 - Math.exp(-k * delta);
                                 this.anclaObj.position.lerp(this._tPos, alpha);
                                 this.anclaObj.quaternion.slerp(this._tQuat, alpha);
@@ -1517,6 +1613,13 @@
                             }
                         }
                     }
+                } else if (this.simulandoPreview && proj && proj[0] !== 0 && proj[5] !== 0) {
+                    // En modo Vista 3D adapta automáticamente la escala a la matriz activa (MindAR o A-Frame)
+                    const distSim = 600;
+                    this.anclaObj.position.set(0, 0, -distSim);
+                    const minHalf = Math.min(distSim / Math.abs(proj[0]), distSim / Math.abs(proj[5]));
+                    const escalaIdealAncla = (minHalf * 0.72) / Math.max(0.1, this.radioModeloLocal);
+                    this.anclaObj.scale.setScalar(escalaIdealAncla);
                 } else if (this.estado === 'RETENCION' && !this.simulandoPreview) {
                     const transcurrido = performance.now() - this.tiempoPerdidaInicio;
                     const maxRetencion = window.ficha.tiempoRetencionPerdidaMs || 5000;
@@ -1529,28 +1632,27 @@
                     }
                 }
 
-                // 2. Auto-Encuadre Espacial: garantiza que el modelo completo quepa siempre
-                // dentro del frustum de pantalla sin tocar el plano cercano ni los bordes
+                // 2. Auto-Encuadre Espacial en AR: evita que el modelo cruce near=10 o se salga de los bordes
                 let targetAutoFit = 1.0;
-                if (window.ficha.autoEncuadreEspacial && proj && proj[0] !== 0 && proj[5] !== 0) {
-                    const distZ = Math.max(0.5, Math.abs(this.anclaObj.position.z));
+                if (!this.simulandoPreview && window.ficha.autoEncuadreEspacial && proj && proj[0] !== 0 && proj[5] !== 0) {
+                    const distZ = Math.max(25, Math.abs(this.anclaObj.position.z));
                     const halfWidthWorld = distZ / Math.abs(proj[0]);
                     const halfHeightWorld = distZ / Math.abs(proj[5]);
                     const minHalfScreen = Math.min(halfWidthWorld, halfHeightWorld);
 
-                    const margen = window.ficha.margenPantalla || 0.82;
-                    const maxRadioSeguroWorld = Math.min(minHalfScreen * margen, distZ * 0.62);
+                    const margen = window.ficha.margenPantalla || 0.78;
+                    const maxRadioSeguroWorld = Math.min(minHalfScreen * margen, (distZ - 15) * 0.75);
 
                     const escalaAncla = Math.max(0.0001, this.anclaObj.scale.x);
                     const radioActualWorld = this.radioModeloLocal * escalaAncla;
 
-                    if (radioActualWorld > maxRadioSeguroWorld) {
+                    if (radioActualWorld > maxRadioSeguroWorld && maxRadioSeguroWorld > 0) {
                         targetAutoFit = maxRadioSeguroWorld / radioActualWorld;
                     }
                 }
                 this.factorAutoFit += (targetAutoFit - this.factorAutoFit) * (1.0 - Math.exp(-16.0 * delta));
 
-                // 3. Actualizar materialización holográfica (escala suave sin planos de corte)
+                // 3. Actualizar materialización holográfica
                 let factorMat = 1.0;
                 if (this.estado === 'MATERIALIZANDO' || this.estado === 'DESMATERIALIZANDO') {
                     this.actualizarEfectoMaterializacion(delta);
@@ -1564,7 +1666,7 @@
                 this.rotUsuarioX += (this.targetRotUsuarioX - this.rotUsuarioX) * smoothInteract;
                 this.escalaUsuario += (this.targetEscalaUsuario - this.escalaUsuario) * smoothInteract;
 
-                // 5. Actualizar animación del GLB a velocidad fluida + rotación de exploración
+                // 5. Actualizar animación del GLB a buena velocidad + rotación de exploración
                 if (this.mixer) {
                     this.mixer.update(delta);
                     this.grupoExploracion.rotation.set(this.rotUsuarioX, this.rotUsuarioY, 0);
@@ -1586,6 +1688,12 @@
 
 <body>
 
+    <!-- VIDEO BASE DE CÁMARA DIRECTA: Muestra la cámara al instante incluso mientras MindAR compila -->
+    <video id="videoCamaraBase" autoplay muted playsinline webkit-playsinline></video>
+
+    <!-- BOTÓN DE DESBLOQUEO (solo aparece si el navegador móvil bloqueó el auto-inicio de cámara) -->
+    <button id="btnPermisoCamara" type="button">📷 Activar Cámara AR</button>
+
     <div class="spatial-vignette"></div>
     <div id="flashPantalla"></div>
 
@@ -1593,12 +1701,11 @@
     <div class="top-bar">
         <div class="status-pill" id="statusPill">
             <span class="status-dot"></span>
-            <span id="estadoCarga">Iniciando AR...</span>
+            <span id="estadoCarga">Iniciando cámara...</span>
         </div>
 
         <div class="top-actions">
-            <!-- Botón siempre disponible para habilitar el modelo en todo el espacio AR con o sin sticker -->
-            <button id="btnSimularAR" class="btn-spatial-pill" type="button" aria-label="Habilitar modelo 3D en todo el espacio AR">
+            <button id="btnSimularAR" class="btn-spatial-pill" type="button" aria-label="Desplegar modelo 3D en todo el espacio AR">
                 <span>⚡ Vista 3D</span>
             </button>
 
@@ -1615,7 +1722,7 @@
         </div>
     </div>
 
-    <!-- GUÍA DE ESCANEO LIGERA SIN SOMBRA DE RECORTE -->
+    <!-- GUÍA DE ESCANEO -->
     <div id="ui-escaneo">
         <div class="marco-escaner" id="marcoEscaner">
             <div class="linea-escaner"></div>
@@ -1715,15 +1822,15 @@
     </section>
 
     <!-- ===================================================== -->
-    <!-- ESCENA AR OPTIMIZADA (SIN PRESERVEDRAWINGBUFFER FIJO) -->
+    <!-- ESCENA AR                                             -->
     <!-- ===================================================== -->
     <a-scene
         id="escenaAR"
         compositor-ar
         loading-screen="enabled: false"
-        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.015; warmupTolerance: 1; missTolerance: 10;"
+        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.01; warmupTolerance: 1; missTolerance: 10;"
         color-space="sRGB"
-        renderer="colorManagement: true; antialias: true; alpha: true; preserveDrawingBuffer: false; powerPreference: high-performance;"
+        renderer="colorManagement: true; antialias: true; alpha: true; preserveDrawingBuffer: true; powerPreference: high-performance;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
@@ -1732,8 +1839,7 @@
         <a-light type="directional" color="#ffffff" intensity="2.0" position="1.5 2.5 2"></a-light>
         <a-light type="directional" color="#e0f2fe" intensity="0.95" position="-1.5 -1 1.2"></a-light>
 
-        <!-- Cámara con planos near y far extendidos para evitar recortes por profundidad -->
-        <a-camera position="0 0 0" look-controls="enabled: false" near="0.05" far="500000" fov="60"></a-camera>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0" id="objetivoAR"></a-entity>
 
@@ -1749,16 +1855,60 @@
     </a-scene>
 
     <!-- ===================================================== -->
-    <!-- LÓGICA DE INTERFAZ Y CAPTURA MULTIMEDIA               -->
+    <!-- LÓGICA DE ARRANQUE DE CÁMARA, INTERFAZ Y CAPTURA      -->
     <!-- ===================================================== -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const escenaEl = document.getElementById("escenaAR");
+            const videoBase = document.getElementById("videoCamaraBase");
+            const btnPermisoCamara = document.getElementById("btnPermisoCamara");
+            const entidadModelo = document.getElementById("entidadModelo");
+            const btnSimularAR = document.getElementById("btnSimularAR");
 
-            if (window.ficha.marcadorMind) {
-                obtenerUrlConCache(window.ficha.marcadorMind);
+            // 1. Iniciar cámara de forma proactiva e inmediata al abrir la página
+            function arrancarCamaraAhora() {
+                if (window.solicitarStreamCamaraSeguro) {
+                    window.solicitarStreamCamaraSeguro().then((stream) => {
+                        window.vincularStreamAVideos(stream);
+                    }).catch((err) => {
+                        console.warn("[Cámara AR] Esperando interacción del usuario:", err);
+                        btnPermisoCamara.style.display = "inline-flex";
+                    });
+                }
             }
 
+            arrancarCamaraAhora();
+
+            btnPermisoCamara.addEventListener("click", () => {
+                btnPermisoCamara.style.display = "none";
+                arrancarCamaraAhora();
+            });
+
+            // Vigilar cuando MindAR inyecte su propio elemento <video> para asegurar su reproducción
+            const observerVideos = new MutationObserver(() => {
+                if (window.__streamCamaraAR) {
+                    window.vincularStreamAVideos(window.__streamCamaraAR);
+                }
+            });
+            observerVideos.observe(document.body, { childList: true });
+
+            // Si el archivo .mind no existe en el entorno de prueba, desplegar automáticamente el modelo 3D sobre la cámara
+            fetch(window.ficha.marcadorMind, { method: "HEAD" })
+                .then((res) => {
+                    if (!res.ok) throw new Error("mind no encontrado");
+                })
+                .catch(() => {
+                    setTimeout(() => {
+                        const comp = entidadModelo.components["modelo-cyberpunk-ar"];
+                        if (comp && comp.estado === "OCULTO") {
+                            btnSimularAR.classList.add("activo");
+                            alDetectarTargetUI();
+                            comp.activarTarget(true);
+                        }
+                    }, 900);
+                });
+
+            // 2. Cargar datos de la ficha e Instagram
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
@@ -1771,7 +1921,6 @@
                 document.getElementById("botonInstagramFicha").href = window.ficha.instagramUrl;
             }
 
-            const entidadModelo = document.getElementById("entidadModelo");
             if (window.ficha.rotacionInicial) {
                 entidadModelo.setAttribute("rotation", window.ficha.rotacionInicial);
             }
@@ -1782,6 +1931,7 @@
                 botonMapa.style.display = "inline-flex";
             }
 
+            // 3. Ajustar resolución del renderer para máxima fluidez (60fps)
             function aplicarViewerPixelRatio() {
                 const renderer = escenaEl && escenaEl.renderer;
                 if (!renderer || typeof renderer.setPixelRatio !== 'function') return;
@@ -1796,6 +1946,7 @@
                 escenaEl.addEventListener('loaded', aplicarViewerPixelRatio);
             }
 
+            // 4. Ficha informativa
             const panelInferior = document.getElementById("panelInferior");
             const btnAbrirFicha = document.getElementById("btnAbrirFicha");
             const btnCerrarFicha = document.getElementById("btnCerrarFicha");
@@ -1803,13 +1954,13 @@
             btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
+            // 5. Detección visual y botón de Vista 3D en espacio completo
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
             const estadoCarga = document.getElementById("estadoCarga");
             const statusPill = document.getElementById("statusPill");
             const hintExploracion = document.getElementById("hintExploracion");
-            const btnSimularAR = document.getElementById("btnSimularAR");
 
             let timeoutOcultarUI = null;
             let timeoutHint = null;
@@ -1850,7 +2001,6 @@
                 estadoCarga.textContent = "Listo para escanear";
             };
 
-            // Permite activar/fijar el modelo en todo el espacio AR en cualquier momento
             btnSimularAR.addEventListener("click", () => {
                 const comp = entidadModelo.components["modelo-cyberpunk-ar"];
                 if (!comp) return;
@@ -1864,7 +2014,7 @@
                 }
             });
 
-            // Captura de FOTO
+            // 6. Captura de FOTO
             const btnFoto = document.getElementById("btnFoto");
             const flashPantalla = document.getElementById("flashPantalla");
 
@@ -1883,7 +2033,7 @@
                 window.capturadorAR.solicitarFoto = true;
             });
 
-            // Grabación de VIDEO HD
+            // 7. Grabación de VIDEO HD
             const btnVideo = document.getElementById("btnVideo");
             const badgeTiempo = document.getElementById("badgeTiempo");
             const textoTiempo = document.getElementById("textoTiempo");
@@ -2000,7 +2150,7 @@
                 }
             });
 
-            // Modal de vista previa
+            // 8. Modal de vista previa
             const modalPreview = document.getElementById("modalPreview");
             const contenedorMedia = document.getElementById("contenedorMedia");
             const pesoArchivo = document.getElementById("pesoArchivo");
