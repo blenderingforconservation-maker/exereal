@@ -4,11 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#060810">
-    <title>Experiencia AR - Tori Mask</title>
+    <meta name="theme-color" content="#05070d">
+    <title>Experiencia AR — Tori Mask (Guerrero Demonio)</title>
 
     <!-- ===================================================== -->
-    <!-- 1. CONFIGURACIÓN DEL PROYECTO                         -->
+    <!-- 1. CONFIGURACIÓN GENERAL DEL PROYECTO WEBAR           -->
     <!-- ===================================================== -->
     <script>
         window.ficha = {
@@ -16,22 +16,26 @@
             marcadorMind: "./targets/imagen_rastreo.mind",
             instagramUrl: "https://www.instagram.com/asteroidae9999/?hl=en",
 
-            // Escala base del modelo
+            // Escala base del modelo (3 veces la base 1.2 = 3.6)
             escala: 3.6,
             rotacionInicial: "0 0 0",
+
+            // ===== Velocidad de Giro Más Lenta y Majestuosa =====
+            velocidadAnimacion: 0.38,      // Escala de tiempo del AnimationMixer (0.38 = giro pausado y fluido)
+            velocidadGiroRespaldo: 0.42,   // Radianes/seg si el GLB no trae pista o en modo respaldo
 
             // ===== Acabado Negro Metalizado para el Tribal =====
             tribalColorHex: 0x101216,
             tribalMetalness: 0.85,
             tribalRoughness: 0.22,
 
-            // ===== Estabilidad y Materialización Fluida =====
-            tiempoRetencionPerdidaMs: 4500, // Aguanta 4.5s si se pierde el sticker
-            duracionMaterializacionMs: 1500,
+            // ===== Estabilidad de Seguimiento y Materialización =====
+            tiempoRetencionPerdidaMs: 4500, // Retiene el modelo 4.5s si se pierde momentáneamente el sticker
+            duracionMaterializacionMs: 1650,
             duracionDesmaterializacionMs: 500,
-            suavizadoPose: 18.0,
+            suavizadoPose: 18.0,            // Seguimiento fluido del target en tiempo real
 
-            // ===== Calidad de captura =====
+            // ===== Calidad de Captura Multimedia =====
             calidadFotoJPEG: 0.92,
             bitrateVideo: 12000000,
             fpsVideo: 30,
@@ -39,7 +43,7 @@
 
             // ===== Optimización de Cámara y GPU Móvil =====
             camara: { width: 1280, height: 720 },
-            viewerPixelRatioMax: 1.5, // Balance óptimo entre nitidez y 60fps estables
+            viewerPixelRatioMax: 1.5,
 
             categoria: "Stickers RA",
             titulo: "Guerrero Demonio",
@@ -47,9 +51,10 @@
             anio: "2026",
             ubicacion: "Mexa Web",
             mapa: "",
-            historia: "."
+            historia: "Pieza interactiva en Realidad Aumentada con seguimiento espacial del sticker, exploración táctil en 360° y materialización holográfica."
         };
 
+        // Forzar cámara trasera (environment) con resolución ágil de 720p a 30fps
         window.modoCamaraActual = "environment";
 
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -61,7 +66,7 @@
                         ...constraints,
                         video: {
                             ...videoBase,
-                            facingMode: { ideal: window.modoCamaraActual },
+                            facingMode: { ideal: "environment" },
                             width: { ideal: window.ficha.camara.width },
                             height: { ideal: window.ficha.camara.height },
                             frameRate: { ideal: 30, max: 30 }
@@ -74,322 +79,656 @@
     </script>
 
     <!-- ===================================================== -->
-    <!-- 2. LIBRERÍAS ESENCIALES (SIN DESCARGAS REDUNDANTES)   -->
+    <!-- 2. LIBRERÍAS WEBAR (A-FRAME + MINDAR + MESHOPT)       -->
     <!-- ===================================================== -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 
+    <!-- ===================================================== -->
+    <!-- 3. ESTILOS UI/UX — MODERNIDAD VIRTUAL (SPATIAL GLASS) -->
+    <!-- ===================================================== -->
     <style>
         :root {
-            --glass-bg: rgba(10, 14, 24, 0.58);
-            --glass-border: rgba(0, 243, 255, 0.28);
-            --neon-cyan: #00f3ff;
-            --neon-magenta: #ff2a75;
-            --neon-mint: #00f5a0;
-            --text-light: #f0f7ff;
+            --spatial-bg: rgba(10, 14, 24, 0.56);
+            --spatial-bg-strong: rgba(12, 16, 28, 0.86);
+            --spatial-border: rgba(255, 255, 255, 0.16);
+            --spatial-highlight: rgba(0, 243, 255, 0.38);
+            --accent-cyan: #00f3ff;
+            --accent-magenta: #ff2a75;
+            --accent-mint: #00f5a0;
+            --text-primary: #f4f8ff;
+            --text-secondary: rgba(244, 248, 255, 0.68);
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
 
         html, body {
-            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: transparent; color: var(--text-light);
+            background-color: #05070d;
+            color: var(--text-primary);
+            touch-action: none;
         }
 
-        /* BARRA SUPERIOR ORGÁNICA */
+        /* Viñeta espacial sutil para dar profundidad de visor AR */
+        .spatial-vignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 110;
+            background: radial-gradient(circle at center, transparent 62%, rgba(4, 6, 14, 0.42) 100%);
+        }
+
+        /* ===================================================== */
+        /* BARRA SUPERIOR SPATIAL GLASS                          */
+        /* ===================================================== */
         .top-bar {
-            position: fixed; top: 0; left: 0; width: 100%; z-index: 300;
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top));
-            pointer-events: none; gap: 10px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 300;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            padding-top: max(14px, env(safe-area-inset-top));
+            pointer-events: none;
+            gap: 10px;
         }
 
         .status-pill {
-            display: inline-flex; align-items: center; gap: 8px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            padding: 7px 14px; border-radius: 999px;
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
-            transition: opacity 0.35s ease, border-color 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            background: var(--spatial-bg);
+            border: 1px solid var(--spatial-border);
+            padding: 8px 15px;
+            border-radius: 999px;
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            transition: all 0.35s ease;
         }
 
         .status-dot {
-            width: 7px; height: 7px; border-radius: 50%;
-            background: var(--neon-cyan);
-            box-shadow: 0 0 8px var(--neon-cyan);
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            box-shadow: 0 0 10px var(--accent-cyan);
             transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
+
+        .status-pill.activo {
+            border-color: rgba(0, 245, 160, 0.42);
+        }
         .status-pill.activo .status-dot {
-            background: var(--neon-mint);
-            box-shadow: 0 0 10px var(--neon-mint);
+            background: var(--accent-mint);
+            box-shadow: 0 0 12px var(--accent-mint);
+        }
+
+        .status-pill.retencion {
+            border-color: rgba(255, 42, 117, 0.45);
         }
         .status-pill.retencion .status-dot {
-            background: var(--neon-magenta);
-            box-shadow: 0 0 10px var(--neon-magenta);
+            background: var(--accent-magenta);
+            box-shadow: 0 0 12px var(--accent-magenta);
         }
 
         #estadoCarga {
-            font-size: 11.5px; font-weight: 600; letter-spacing: 0.2px;
-            color: var(--text-light);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+            color: var(--text-primary);
+            white-space: nowrap;
         }
 
         .top-actions {
-            display: flex; align-items: center; gap: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             pointer-events: auto;
         }
 
-        /* BOTÓN ORGÁNICO DE INSTAGRAM */
-        .btn-ig-top {
-            height: 38px; padding: 0 13px; border-radius: 999px;
-            background: var(--glass-bg); color: var(--text-light);
-            border: 1px solid rgba(255, 42, 117, 0.45);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
-            display: inline-flex; align-items: center; gap: 6px;
-            text-decoration: none; font-size: 11.5px; font-weight: 600;
-            transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        .btn-spatial-pill {
+            height: 38px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: var(--spatial-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--spatial-border);
+            backdrop-filter: blur(20px) saturate(160%);
+            -webkit-backdrop-filter: blur(20px) saturate(160%);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s ease, background 0.25s ease;
         }
-        .btn-ig-top:active { transform: scale(0.92); }
+        .btn-spatial-pill:hover {
+            border-color: var(--spatial-highlight);
+            background: rgba(18, 26, 44, 0.72);
+        }
+        .btn-spatial-pill:active {
+            transform: scale(0.92);
+        }
+
         .btn-ig-top svg {
-            width: 15px; height: 15px; stroke: var(--neon-magenta);
+            width: 15px;
+            height: 15px;
+            stroke: var(--accent-magenta);
+            filter: drop-shadow(0 0 6px rgba(255, 42, 117, 0.45));
             flex-shrink: 0;
         }
 
-        #btnAbrirFicha {
-            display: none; width: 38px; height: 38px;
-            border-radius: 50%;
-            background: var(--glass-bg); color: var(--text-light);
-            border: 1px solid var(--glass-border);
-            font-size: 14px; font-weight: 700;
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); cursor: pointer;
-            align-items: center; justify-content: center;
-            transition: transform 0.2s ease;
+        #btnSimularAR {
+            border-color: rgba(0, 243, 255, 0.35);
+            color: var(--accent-cyan);
         }
-        #btnAbrirFicha:active { transform: scale(0.9); }
+        #btnSimularAR.activo {
+            background: rgba(0, 245, 160, 0.16);
+            border-color: var(--accent-mint);
+            color: var(--accent-mint);
+        }
 
-        /* GUÍA DE ESCANEO ORGÁNICA (SIN TEXTO INFERIOR) */
+        #btnAbrirFicha {
+            display: none;
+            width: 38px;
+            padding: 0;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* ===================================================== */
+        /* RETÍCULA DE ESCANEO ORGÁNICA (SIN TEXTO DEBAJO)       */
+        /* ===================================================== */
         #ui-escaneo {
-            position: fixed; inset: 0;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 150; pointer-events: none; transition: opacity 0.4s ease;
+            position: fixed;
+            inset: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 150;
+            pointer-events: none;
+            transition: opacity 0.45s ease, transform 0.45s ease;
         }
+
         .marco-escaner {
-            width: 62vw; max-width: 226px; height: 62vw; max-height: 226px;
-            border-radius: 50%; position: relative;
-            border: 1.5px solid rgba(0, 243, 255, 0.4);
-            background: radial-gradient(circle, rgba(0, 243, 255, 0.06) 0%, transparent 72%);
-            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.26), inset 0 0 24px rgba(0, 243, 255, 0.12);
-            display: flex; align-items: center; justify-content: center;
-            transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+            width: 60vw;
+            max-width: 220px;
+            height: 60vw;
+            max-height: 220px;
+            border-radius: 50%;
+            position: relative;
+            border: 1.5px solid rgba(0, 243, 255, 0.36);
+            background: radial-gradient(circle, rgba(0, 243, 255, 0.05) 0%, transparent 72%);
+            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.24), inset 0 0 28px rgba(0, 243, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), border-color 0.35s ease, box-shadow 0.35s ease;
         }
+
+        .marco-escaner::before {
+            content: "";
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            border: 1px dashed rgba(255, 255, 255, 0.18);
+            animation: giroOrbita 18s linear infinite;
+        }
+
         .marco-escaner.detectado {
             border-color: rgba(0, 245, 160, 0.85);
-            transform: scale(1.06);
-            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.12), 0 0 32px rgba(0, 245, 160, 0.4);
+            transform: scale(1.08);
+            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.08), 0 0 36px rgba(0, 245, 160, 0.42);
         }
 
         .linea-escaner {
-            width: 74%; height: 2px; border-radius: 999px;
-            background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
-            box-shadow: 0 0 12px var(--neon-cyan);
-            animation: pulsoOrganico 2.3s infinite ease-in-out;
+            width: 72%;
+            height: 2px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, transparent, var(--accent-cyan), var(--accent-magenta), transparent);
+            box-shadow: 0 0 14px var(--accent-cyan);
+            animation: pulsoOrganico 2.4s infinite ease-in-out;
             transition: opacity 0.25s ease;
         }
-        .marco-escaner.detectado .linea-escaner { opacity: 0; animation-play-state: paused; }
+        .marco-escaner.detectado .linea-escaner {
+            opacity: 0;
+            animation-play-state: paused;
+        }
 
         @keyframes pulsoOrganico {
-            0%, 100% { transform: translateY(-64px) scaleX(0.75); opacity: 0.3; }
-            50% { transform: translateY(64px) scaleX(0.95); opacity: 0.95; }
+            0%, 100% { transform: translateY(-60px) scaleX(0.72); opacity: 0.25; }
+            50% { transform: translateY(60px) scaleX(0.96); opacity: 0.92; }
+        }
+        @keyframes giroOrbita {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
-        /* DOCK DE CONTROLES ORGÁNICO Y LIMPIO */
+        /* ===================================================== */
+        /* PÍLDORA FLOTANTE DE EXPLORACIÓN 360°                  */
+        /* ===================================================== */
+        #hintExploracion {
+            position: fixed;
+            bottom: max(112px, calc(96px + env(safe-area-inset-bottom)));
+            left: 50%;
+            transform: translateX(-50%) translateY(8px);
+            z-index: 260;
+            pointer-events: none;
+            background: var(--spatial-bg);
+            border: 1px solid var(--spatial-border);
+            padding: 7px 16px;
+            border-radius: 999px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            font-size: 11.5px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.45s ease, transform 0.45s ease;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        }
+        #hintExploracion.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===================================================== */
+        /* DOCK DE CAPTURA SPATIAL GLASS (SOLO FOTO Y VIDEO)     */
+        /* ===================================================== */
         .contenedor-controles {
-            position: fixed; bottom: 26px; bottom: max(26px, env(safe-area-inset-bottom));
-            left: 50%; transform: translateX(-50%); z-index: 280;
-            display: flex; flex-direction: column; align-items: center; gap: 10px;
+            position: fixed;
+            bottom: 24px;
+            bottom: max(24px, env(safe-area-inset-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 280;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
+
         #badgeTiempo {
-            display: none; align-items: center; gap: 7px;
-            background: rgba(20, 8, 18, 0.78); color: #ffffff;
+            display: none;
+            align-items: center;
+            gap: 7px;
+            background: rgba(20, 8, 18, 0.8);
+            color: #ffffff;
             border: 1px solid rgba(255, 42, 117, 0.55);
-            font-size: 12px; font-weight: 600; letter-spacing: 0.8px;
-            padding: 5px 14px; border-radius: 999px;
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            padding: 5px 14px;
+            border-radius: 999px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
-        #badgeTiempo.activo { display: flex; }
+        #badgeTiempo.activo {
+            display: flex;
+        }
+
         .punto-parpadeo {
-            width: 7px; height: 7px; border-radius: 50%; background: var(--neon-magenta);
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent-magenta);
+            box-shadow: 0 0 8px var(--accent-magenta);
             animation: parpadeo 1s infinite;
         }
-        @keyframes parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+        @keyframes parpadeo {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
 
         .dock-captura {
-            display: flex; align-items: center; gap: 20px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            padding: 10px 22px; border-radius: 999px;
-            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: var(--spatial-bg);
+            border: 1px solid var(--spatial-border);
+            padding: 10px 26px;
+            border-radius: 999px;
+            backdrop-filter: blur(22px) saturate(180%);
+            -webkit-backdrop-filter: blur(22px) saturate(180%);
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.18);
         }
+
+        .dock-divider {
+            width: 1px;
+            height: 28px;
+            background: rgba(255, 255, 255, 0.14);
+        }
+
+        .btn-captura-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
         .btn-icono {
-            position: relative; border: none; background: none; padding: 0;
-            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            position: relative;
+            border: none;
+            background: none;
+            padding: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             touch-action: manipulation;
-            transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease;
         }
-        .btn-icono:active { transform: scale(0.88); }
+        .btn-icono:active {
+            transform: scale(0.88);
+        }
 
         #btnFoto {
-            width: 54px; height: 54px; border-radius: 50%;
-            border: 2px solid rgba(0, 243, 255, 0.85);
-            background: rgba(0, 243, 255, 0.1);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 243, 255, 0.82);
+            background: rgba(0, 243, 255, 0.12);
+            box-shadow: 0 0 18px rgba(0, 243, 255, 0.2);
         }
         .nucleo-foto {
-            width: 42px; height: 42px; border-radius: 50%;
-            background: linear-gradient(135deg, #ffffff, #b8faff);
-            display: flex; align-items: center; justify-content: center; color: #08101e;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffffff 0%, #c4faff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #07101e;
+            box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.15);
         }
 
         #btnVideo {
-            width: 54px; height: 54px; border-radius: 50%;
-            border: 2px solid rgba(255, 42, 117, 0.85);
-            background: rgba(255, 42, 117, 0.1);
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 42, 117, 0.82);
+            background: rgba(255, 42, 117, 0.12);
+            box-shadow: 0 0 18px rgba(255, 42, 117, 0.2);
         }
         .nucleo-video {
-            width: 38px; height: 38px; border-radius: 50%;
-            background: linear-gradient(135deg, #ff2a75, #ff5e97);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff2a75 0%, #ff639b 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #btnVideo.grabando { border-color: var(--neon-cyan); }
+        #btnVideo.grabando {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 24px rgba(0, 243, 255, 0.45);
+        }
         #btnVideo.grabando .nucleo-video {
-            width: 20px; height: 20px; border-radius: 6px;
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
         }
-
-        #btnCambiarCamara {
-            width: 44px; height: 44px; border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            color: var(--text-light); transition: transform 0.4s ease;
+        #btnVideo.grabando .nucleo-video svg {
+            opacity: 0;
         }
-        #btnCambiarCamara.girando { transform: rotate(180deg); }
-        #btnCambiarCamara[disabled] { opacity: 0.4; cursor: wait; }
 
         #flashPantalla {
-            position: fixed; inset: 0;
-            background: #ffffff; opacity: 0; pointer-events: none; z-index: 500;
+            position: fixed;
+            inset: 0;
+            background: #ffffff;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 500;
             transition: opacity 0.22s ease;
         }
 
-        /* MODAL DE VISTA PREVIA */
+        /* ===================================================== */
+        /* MODAL DE VISTA PREVIA MULTIMEDIA                      */
+        /* ===================================================== */
         #modalPreview {
-            position: fixed; inset: 0;
-            background: rgba(4, 7, 15, 0.82); backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px); z-index: 600;
-            display: none; flex-direction: column; justify-content: center; align-items: center;
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 7, 15, 0.82);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            z-index: 600;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             padding: 18px;
         }
-        #modalPreview.activo { display: flex; }
+        #modalPreview.activo {
+            display: flex;
+        }
+
         .tarjeta-preview {
-            background: rgba(14, 19, 32, 0.94);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px; padding: 18px; width: 100%; max-width: 380px;
-            color: var(--text-light);
-            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6); text-align: center;
+            background: var(--spatial-bg-strong);
+            border: 1px solid var(--spatial-border);
+            border-radius: 26px;
+            padding: 18px;
+            width: 100%;
+            max-width: 380px;
+            color: var(--text-primary);
+            box-shadow: 0 22px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+            text-align: center;
         }
+
         .cabecera-preview {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 12px; font-size: 13.5px; font-weight: 600; color: var(--text-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 13.5px;
+            font-weight: 600;
         }
+
         #pesoArchivo {
-            background: rgba(0, 243, 255, 0.12); color: var(--neon-cyan);
-            border: 1px solid rgba(0, 243, 255, 0.28); padding: 4px 10px;
-            border-radius: 999px; font-weight: 600; font-size: 11px;
+            background: rgba(0, 243, 255, 0.12);
+            color: var(--accent-cyan);
+            border: 1px solid rgba(0, 243, 255, 0.28);
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 11px;
         }
+
         .contenedor-media {
-            width: 100%; max-height: 55vh; border-radius: 16px; overflow: hidden;
-            background: #000000; margin-bottom: 14px;
-            display: flex; justify-content: center; align-items: center;
+            width: 100%;
+            max-height: 55vh;
+            border-radius: 18px;
+            overflow: hidden;
+            background: #000000;
+            margin-bottom: 14px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         .contenedor-media img, .contenedor-media video {
-            max-width: 100%; max-height: 55vh; object-fit: contain; display: block;
+            max-width: 100%;
+            max-height: 55vh;
+            object-fit: contain;
+            display: block;
         }
-        .acciones-preview { display: flex; gap: 8px; }
+
+        .acciones-preview {
+            display: flex;
+            gap: 8px;
+        }
         .btn-modal {
-            flex: 1; padding: 12px 10px; border: none; border-radius: 14px;
-            font-size: 13px; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 6px;
+            flex: 1;
+            padding: 12px 10px;
+            border: none;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             touch-action: manipulation;
         }
-        #btnCerrarPreview { background: rgba(255, 255, 255, 0.1); color: #ffffff; flex: 0.6; }
-        #btnCompartir { display: none; background: var(--neon-mint); color: #061018; }
-        #btnDescargar { background: var(--neon-cyan); color: #061018; }
-
-        /* FICHA INFERIOR */
-        #panelInferior {
-            position: fixed; bottom: 0; left: 50%; transform: translate(-50%, 110%);
-            width: 100%; max-width: 560px;
-            background: rgba(12, 17, 28, 0.94);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border-top: 1px solid var(--glass-border);
-            border-radius: 26px 26px 0 0; padding: 22px 24px 30px;
-            z-index: 400; box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.5);
-            transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
-            max-height: 80vh; overflow-y: auto; color: var(--text-light);
+        #btnCerrarPreview {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            flex: 0.55;
         }
-        #panelInferior.visible { transform: translate(-50%, 0%); }
+        #btnCompartir {
+            display: none;
+            background: var(--accent-mint);
+            color: #061018;
+        }
+        #btnDescargar {
+            background: var(--accent-cyan);
+            color: #061018;
+        }
+
+        /* ===================================================== */
+        /* PANEL INFERIOR DE INFORMACIÓN                         */
+        /* ===================================================== */
+        #panelInferior {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translate(-50%, 110%);
+            width: 100%;
+            max-width: 560px;
+            background: var(--spatial-bg-strong);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            border-top: 1px solid var(--spatial-border);
+            border-radius: 26px 26px 0 0;
+            padding: 22px 24px 30px;
+            z-index: 400;
+            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
+            transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+            max-height: 80vh;
+            overflow-y: auto;
+            color: var(--text-primary);
+        }
+        #panelInferior.visible {
+            transform: translate(-50%, 0%);
+        }
         .cabecera-ficha {
-            display: flex; justify-content: space-between; align-items: flex-start;
-            gap: 12px; margin-bottom: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
         }
         .badge-categoria {
-            display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
-            color: #061018; background-color: var(--neon-cyan); padding: 4px 10px;
-            border-radius: 999px; margin-bottom: 6px; text-transform: uppercase;
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            color: #061018;
+            background-color: var(--accent-cyan);
+            padding: 4px 10px;
+            border-radius: 999px;
+            margin-bottom: 6px;
+            text-transform: uppercase;
         }
-        .titulo-obra { margin: 0; font-size: 22px; font-weight: 700; color: #ffffff; }
+        .titulo-obra {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffffff;
+        }
         .boton-cerrar-ficha {
-            background: rgba(255, 255, 255, 0.1); color: #ffffff; border: none;
-            border-radius: 999px; padding: 8px 14px; font-size: 12px;
-            font-weight: 600; cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: none;
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
         }
         .datos-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
-            padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12); margin-bottom: 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            margin-bottom: 14px;
         }
         .etiqueta {
-            display: block; font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
-            color: var(--neon-cyan); margin-bottom: 4px;
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            color: var(--accent-cyan);
+            margin-bottom: 4px;
         }
-        .valor { font-size: 14px; color: var(--text-light); font-weight: 600; }
+        .valor {
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
         .historia-texto {
-            font-size: 14px; line-height: 1.6; color: rgba(240, 247, 255, 0.8);
-            margin: 8px 0 0 0; white-space: pre-line;
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-secondary);
+            margin: 8px 0 0 0;
+            white-space: pre-line;
         }
         .ficha-links {
-            display: flex; flex-direction: column; gap: 10px; margin-top: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 16px;
         }
         .btn-ficha-link {
-            width: 100%; text-align: center; padding: 12px;
-            background: rgba(255, 42, 117, 0.14); color: #ffffff;
-            border: 1px solid rgba(255, 42, 117, 0.45); border-radius: 14px;
-            text-decoration: none; font-size: 12.5px; font-weight: 600;
-            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%;
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 42, 117, 0.14);
+            color: #ffffff;
+            border: 1px solid rgba(255, 42, 117, 0.42);
+            border-radius: 14px;
+            text-decoration: none;
+            font-size: 12.5px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         #botonMapa {
-            display: none; background: rgba(0, 243, 255, 0.14);
-            color: var(--neon-cyan); border-color: var(--glass-border);
+            display: none;
+            background: rgba(0, 243, 255, 0.14);
+            color: var(--accent-cyan);
+            border-color: var(--spatial-highlight);
         }
     </style>
 
     <!-- ===================================================== -->
-    <!-- 3. MOTOR AR OPTIMIZADO (CACHÉ + SHADERS + FLUIDEZ)    -->
+    <!-- 4. MOTOR AR: CACHÉ + COMPOSITOR + EXPLORACIÓN 360°    -->
     <!-- ===================================================== -->
     <script>
-        // Helper de Caché para ahorrar datos móviles en visitas repetidas
+        // Helper de Caché local para ahorrar datos móviles en visitas repetidas
         async function obtenerUrlConCache(url) {
             if (!('caches' in window)) return url;
             try {
@@ -434,7 +773,7 @@
         };
 
         // ============================================================
-        // COMPOSITOR: une cámara + 3D solo cuando se toma foto o video
+        // COMPOSITOR: une cámara + 3D únicamente al tomar foto o video
         // ============================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
@@ -505,15 +844,10 @@
                 const W = compCanvas.width;
                 const H = compCanvas.height;
 
-                ctx.fillStyle = '#000000';
+                ctx.fillStyle = '#05070d';
                 ctx.fillRect(0, 0, W, H);
 
                 if (video && video.readyState >= 2) {
-                    ctx.save();
-                    if (window.modoCamaraActual === "user") {
-                        ctx.translate(W, 0);
-                        ctx.scale(-1, 1);
-                    }
                     ctx.drawImage(
                         video,
                         (vRect.left / vw) * W,
@@ -521,7 +855,6 @@
                         (vRect.width / vw) * W,
                         (vRect.height / vh) * H
                     );
-                    ctx.restore();
                 }
 
                 ctx.drawImage(
@@ -544,8 +877,8 @@
         });
 
         // ============================================================
-        // MODELO 3D: TRIBAL NEGRO METALIZADO + COLORES ORIGINALES INTACTOS
-        // + FLUIDEZ SIN RECOMPILACIÓN DE SHADERS
+        // COMPONENTE PRINCIPAL: SEGUIMIENTO DEL TARGET + GIRO LENTO +
+        // EXPLORACIÓN TÁCTIL 360° + TRIBAL NEGRO METALIZADO
         // ============================================================
         AFRAME.registerComponent('modelo-cyberpunk-ar', {
             init: function () {
@@ -554,16 +887,27 @@
                 this.actions = [];
                 this.giroRespaldo = false;
                 this.contenedor = null;
+                this.grupoExploracion = new THREE.Group();
                 this.anilloEscaner = null;
                 this.materialesAnimables = [];
 
                 this.estado = 'OCULTO';
                 this.progresoMat = 0;
                 this.rastreandoEnVivo = false;
+                this.simulandoPreview = false;
                 this.tiempoPerdidaInicio = 0;
                 this.poseInicializada = false;
                 this.relojPulso = 0;
                 this.smoothDelta = 1 / 60;
+
+                // Variables para exploración interactiva 360° (drag + pinch zoom)
+                this.rotUsuarioY = 0;
+                this.rotUsuarioX = 0;
+                this.targetRotUsuarioY = 0;
+                this.targetRotUsuarioX = 0;
+                this.escalaUsuario = 1.0;
+                this.targetEscalaUsuario = 1.0;
+                this.anguloGiroLento = 0;
 
                 this.minYLocal = -1.8;
                 this.maxYLocal = 1.8;
@@ -573,7 +917,7 @@
                 this._tScale = new THREE.Vector3();
                 this._planeNormal = new THREE.Vector3();
                 this._planePoint = new THREE.Vector3();
-                // Plano de corte persistente (constant = 1000 cuando está activo para no recompilar shaders)
+                // Plano de corte persistente sin recompilación de shaders
                 this.planoCorte = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
 
                 const el = this.el;
@@ -595,22 +939,22 @@
                 if (el.sceneEl.hasLoaded) configurarRenderer();
                 else el.sceneEl.addEventListener('loaded', configurarRenderer);
 
-                // Anillo ligero de materialización (geometría de 32 segmentos para máximo rendimiento)
+                // Anillo de materialización holográfica
                 const crearAnilloEscaner = (radio) => {
                     const group = new THREE.Group();
 
-                    const geoRing = new THREE.RingGeometry(radio * 0.8, radio * 0.98, 32);
+                    const geoRing = new THREE.RingGeometry(radio * 0.8, radio * 0.98, 36);
                     geoRing.rotateX(-Math.PI / 2);
                     const matRing = new THREE.MeshBasicMaterial({
                         color: 0x00f3ff,
                         side: THREE.DoubleSide,
                         transparent: true,
-                        opacity: 0.8,
+                        opacity: 0.82,
                         blending: THREE.AdditiveBlending,
                         depthWrite: false
                     });
 
-                    const geoGlow = new THREE.RingGeometry(radio * 0.45, radio * 0.8, 32);
+                    const geoGlow = new THREE.RingGeometry(radio * 0.45, radio * 0.8, 36);
                     geoGlow.rotateX(-Math.PI / 2);
                     const matGlow = new THREE.MeshBasicMaterial({
                         color: 0xff2a75,
@@ -627,22 +971,120 @@
                     return group;
                 };
 
-                // Detecta si una malla/material corresponde al tribal interior para darle negro metalizado
-                // sin alterar los materiales/texturas originales de la máscara o esfera
+                // Identifica la malla del tribal para aplicarle negro metalizado sin alterar la máscara
                 const esMallaTribal = (node, mat, totalMallas) => {
                     const etiqueta = ((node.name || "") + " " + (node.parent?.name || "") + " " + (mat.name || "")).toLowerCase();
-                    if (/tribal|sigil|symbol|curve|logo| tatu|demon|inner|vector|path/i.test(etiqueta)) {
+                    if (/tribal|sigil|symbol|curve|logo|tatu|demon|inner|vector|path/i.test(etiqueta)) {
                         return true;
                     }
                     if (/sphere|esfera|mask|mascara|face|cara|head|glass|orb/i.test(etiqueta)) {
                         return false;
                     }
-                    // Si no tiene mapa de textura de color y su color base es oscuro/negro
                     if (!mat.map && mat.color) {
                         const luma = 0.299 * mat.color.r + 0.587 * mat.color.g + 0.114 * mat.color.b;
                         if (luma < 0.22 && totalMallas > 1) return true;
                     }
                     return false;
+                };
+
+                // ============================================================
+                // MODELO 3D PROCEDURAL DE RESPALDO (PARA EL VISUALIZADOR LIVE)
+                // Si ./models/giro-torimask-opt.glb no existe en el sandbox,
+                // construye la esfera + Tribal Negro Metalizado + Tori Mask
+                // ============================================================
+                const construirModeloRespaldoProcedural = () => {
+                    const root = new THREE.Group();
+
+                    // 1. Tribal interior en Negro Metalizado (#101216)
+                    const matTribal = new THREE.MeshStandardMaterial({
+                        name: "tribal_metallic_black",
+                        color: window.ficha.tribalColorHex ?? 0x101216,
+                        metalness: window.ficha.tribalMetalness ?? 0.85,
+                        roughness: window.ficha.tribalRoughness ?? 0.22,
+                        side: THREE.DoubleSide,
+                        clippingPlanes: [this.planoCorte]
+                    });
+                    matTribal.userData.origEmissive = matTribal.emissive.clone();
+                    matTribal.userData.origEmissiveIntensity = 1.0;
+                    this.materialesAnimables.push(matTribal);
+
+                    const grupoTribal = new THREE.Group();
+                    grupoTribal.name = "tribal_inner_sigil";
+
+                    // Cuernos simétricos cyber-sigil + núcleo tribal
+                    const geoCuerno = new THREE.TorusGeometry(0.42, 0.055, 16, 48, Math.PI * 1.15);
+                    const cuernoIzq = new THREE.Mesh(geoCuerno, matTribal);
+                    cuernoIzq.position.set(-0.22, 0.18, 0);
+                    cuernoIzq.rotation.set(0.15, 0.2, 0.85);
+
+                    const cuernoDer = new THREE.Mesh(geoCuerno, matTribal);
+                    cuernoDer.position.set(0.22, 0.18, 0);
+                    cuernoDer.rotation.set(0.15, -0.2, 2.29);
+
+                    const geoNudo = new THREE.TorusKnotGeometry(0.28, 0.042, 80, 16, 2, 3);
+                    const nudoCentral = new THREE.Mesh(geoNudo, matTribal);
+                    nudoCentral.scale.set(1.0, 1.35, 0.55);
+
+                    grupoTribal.add(cuernoIzq, cuernoDer, nudoCentral);
+                    root.add(grupoTribal);
+
+                    // 2. Acentos Oni / Tori Mask en rojo carmesí y dorado original
+                    const matMascara = new THREE.MeshStandardMaterial({
+                        name: "torimask_crimson",
+                        color: 0xc81e32,
+                        metalness: 0.35,
+                        roughness: 0.32,
+                        side: THREE.DoubleSide,
+                        clippingPlanes: [this.planoCorte]
+                    });
+                    matMascara.userData.origEmissive = matMascara.emissive.clone();
+                    matMascara.userData.origEmissiveIntensity = 1.0;
+                    this.materialesAnimables.push(matMascara);
+
+                    const geoAnilloMascara = new THREE.TorusGeometry(0.56, 0.025, 16, 64);
+                    const aro1 = new THREE.Mesh(geoAnilloMascara, matMascara);
+                    aro1.rotation.x = Math.PI / 3;
+                    const aro2 = new THREE.Mesh(geoAnilloMascara, matMascara);
+                    aro2.rotation.y = Math.PI / 3;
+                    root.add(aro1, aro2);
+
+                    // 3. Esfera exterior cristalina
+                    const matEsfera = new THREE.MeshStandardMaterial({
+                        name: "outer_sphere_mask",
+                        color: 0xd8f4ff,
+                        metalness: 0.2,
+                        roughness: 0.12,
+                        transparent: true,
+                        opacity: 0.24,
+                        depthWrite: false,
+                        side: THREE.DoubleSide,
+                        clippingPlanes: [this.planoCorte]
+                    });
+                    matEsfera.userData.origEmissive = matEsfera.emissive.clone();
+                    matEsfera.userData.origEmissiveIntensity = 1.0;
+                    this.materialesAnimables.push(matEsfera);
+
+                    const geoEsfera = new THREE.SphereGeometry(0.68, 36, 36);
+                    const meshEsfera = new THREE.Mesh(geoEsfera, matEsfera);
+                    root.add(meshEsfera);
+
+                    const escalaObjetivo = window.ficha.escala || 3.6;
+                    root.scale.setScalar(escalaObjetivo * 0.55);
+
+                    this.minYLocal = -escalaObjetivo * 0.58;
+                    this.maxYLocal = escalaObjetivo * 0.58;
+
+                    this.anilloEscaner = crearAnilloEscaner(escalaObjetivo * 0.52);
+                    el.object3D.add(this.anilloEscaner);
+
+                    this.grupoExploracion.add(root);
+                    el.setObject3D('mesh', this.grupoExploracion);
+                    this.contenedor = root;
+                    this.giroRespaldo = true;
+
+                    if (estadoUI) estadoUI.textContent = "Listo para escanear";
+                    const btnSim = document.getElementById('btnSimularAR');
+                    if (btnSim) btnSim.style.display = "inline-flex";
                 };
 
                 const cargarGLB = async () => {
@@ -651,7 +1093,12 @@
                     const meshopt = (typeof MeshoptDecoder !== 'undefined') ? MeshoptDecoder : window.MeshoptDecoder;
                     if (meshopt) loader.setMeshoptDecoder(meshopt);
 
-                    // Obtener URL desde caché local para ahorrar datos móviles
+                    if (THREE.DRACOLoader) {
+                        const dracoLoader = new THREE.DRACOLoader();
+                        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+                        loader.setDRACOLoader(dracoLoader);
+                    }
+
                     const modelUrl = await obtenerUrlConCache(window.ficha.modelo);
 
                     loader.load(
@@ -659,9 +1106,10 @@
                         (gltf) => {
                             const model = gltf.scene;
 
-                            // 1. Inicializar animaciones en loop infinito
+                            // 1. Inicializar animaciones en loop infinito con velocidad más lenta (0.38x)
                             if (gltf.animations && gltf.animations.length > 0) {
                                 this.mixer = new THREE.AnimationMixer(model);
+                                this.mixer.timeScale = window.ficha.velocidadAnimacion ?? 0.38;
                                 gltf.animations.forEach((clip) => {
                                     const action = this.mixer.clipAction(clip);
                                     action.setLoop(THREE.LoopRepeat, Infinity);
@@ -673,7 +1121,7 @@
                                 this.giroRespaldo = true;
                             }
 
-                            // 2. Contar mallas y calcular Bounding Box
+                            // 2. Contar mallas y medir Bounding Box
                             model.updateMatrixWorld(true);
                             const boxGlobal = new THREE.Box3();
                             const listaNodos = [];
@@ -688,8 +1136,8 @@
 
                             if (boxGlobal.isEmpty()) boxGlobal.setFromObject(model);
 
-                            // 3. Configurar materiales respetando el 100% de los colores originales del modelo
-                            // y aplicando negro metalizado únicamente al tribal
+                            // 3. Configurar materiales manteniendo intactos los colores originales
+                            // y aplicando negro metalizado al tribal interior
                             const materialesVistos = new Set();
 
                             listaNodos.forEach((node) => {
@@ -702,7 +1150,6 @@
                                     mat.clippingPlanes = [this.planoCorte];
 
                                     if (esMallaTribal(node, mat, listaNodos.length)) {
-                                        // Tribal en color negro un poco metalizado
                                         if (mat.color) mat.color.setHex(window.ficha.tribalColorHex ?? 0x101216);
                                         if ('metalness' in mat) mat.metalness = window.ficha.tribalMetalness ?? 0.85;
                                         if ('roughness' in mat) mat.roughness = window.ficha.tribalRoughness ?? 0.22;
@@ -711,7 +1158,6 @@
                                         mat.depthWrite = true;
                                     }
 
-                                    // Guardar los colores/emissive originales exactos para restaurarlos tras la materialización
                                     if (mat.emissive) {
                                         mat.userData.origEmissive = mat.emissive.clone();
                                         mat.userData.origEmissiveIntensity = mat.emissiveIntensity ?? 1.0;
@@ -746,15 +1192,17 @@
                             this.anilloEscaner = crearAnilloEscaner(escalaObjetivo * 0.52);
                             el.object3D.add(this.anilloEscaner);
 
-                            el.setObject3D('mesh', pivotGroup);
+                            this.grupoExploracion.add(pivotGroup);
+                            el.setObject3D('mesh', this.grupoExploracion);
                             this.contenedor = pivotGroup;
 
                             if (estadoUI) estadoUI.textContent = "Listo para escanear";
                         },
                         undefined,
-                        (error) => {
-                            console.error("Error cargando GLB:", error);
-                            if (estadoUI) estadoUI.textContent = "Error al cargar modelo";
+                        () => {
+                            // Si se ejecuta en el visualizador de código sin el archivo local .glb,
+                            // activa automáticamente el modelo 3D procedural interactivo
+                            construirModeloRespaldoProcedural();
                         }
                     );
                 };
@@ -766,11 +1214,102 @@
                     cargarGLB();
                 }
 
-                targetEl.addEventListener('targetFound', () => {
-                    this.rastreandoEnVivo = true;
+                // ============================================================
+                // GESTOS TÁCTILES Y DE MOUSE PARA EXPLORACIÓN 360° + ZOOM
+                // ============================================================
+                let arrastrando = false;
+                let prevX = 0, prevY = 0;
+                let distPinchInicial = 0;
+                let escalaPinchInicial = 1.0;
+                let ultimoTap = 0;
+
+                const esElementoUI = (target) => {
+                    return target && target.closest && target.closest('button, a, #panelInferior, #modalPreview');
+                };
+
+                window.addEventListener('pointerdown', (e) => {
+                    if (this.estado === 'OCULTO' || esElementoUI(e.target)) return;
+                    const ahora = performance.now();
+                    if (ahora - ultimoTap < 280) {
+                        // Doble toque: restablecer vista original
+                        this.targetRotUsuarioY = 0;
+                        this.targetRotUsuarioX = 0;
+                        this.targetEscalaUsuario = 1.0;
+                    }
+                    ultimoTap = ahora;
+                    arrastrando = true;
+                    prevX = e.clientX;
+                    prevY = e.clientY;
+                }, { passive: true });
+
+                window.addEventListener('pointermove', (e) => {
+                    if (!arrastrando || this.estado === 'OCULTO') return;
+                    const dx = e.clientX - prevX;
+                    const dy = e.clientY - prevY;
+                    prevX = e.clientX;
+                    prevY = e.clientY;
+
+                    this.targetRotUsuarioY += dx * 0.0085;
+                    this.targetRotUsuarioX = THREE.MathUtils.clamp(
+                        this.targetRotUsuarioX + dy * 0.0065,
+                        -Math.PI * 0.42,
+                        Math.PI * 0.42
+                    );
+                }, { passive: true });
+
+                window.addEventListener('pointerup', () => { arrastrando = false; }, { passive: true });
+                window.addEventListener('pointercancel', () => { arrastrando = false; }, { passive: true });
+
+                // Pellizco con 2 dedos para zoom en móviles
+                window.addEventListener('touchstart', (e) => {
+                    if (this.estado === 'OCULTO') return;
+                    if (e.touches.length === 2) {
+                        arrastrando = false;
+                        distPinchInicial = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
+                        escalaPinchInicial = this.targetEscalaUsuario;
+                    }
+                }, { passive: true });
+
+                window.addEventListener('touchmove', (e) => {
+                    if (this.estado === 'OCULTO' || e.touches.length !== 2 || distPinchInicial <= 0) return;
+                    const distActual = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const factor = distActual / distPinchInicial;
+                    this.targetEscalaUsuario = THREE.MathUtils.clamp(escalaPinchInicial * factor, 0.5, 2.4);
+                }, { passive: true });
+
+                // Rueda del mouse para zoom en el visualizador de escritorio
+                window.addEventListener('wheel', (e) => {
+                    if (this.estado === 'OCULTO' || esElementoUI(e.target)) return;
+                    this.targetEscalaUsuario = THREE.MathUtils.clamp(
+                        this.targetEscalaUsuario - e.deltaY * 0.0012,
+                        0.5,
+                        2.4
+                    );
+                }, { passive: true });
+
+                // ============================================================
+                // ACTIVACIÓN POR TARGET DE MINDAR O SIMULADOR DEL VISUALIZADOR
+                // ============================================================
+                this.activarTarget = (esSimulacion = false) => {
+                    this.rastreandoEnVivo = !esSimulacion;
+                    this.simulandoPreview = esSimulacion;
                     this.anclaObj.visible = true;
 
+                    if (esSimulacion && !this.poseInicializada) {
+                        this.anclaObj.position.set(0, 0, -3.2);
+                        this.anclaObj.quaternion.identity();
+                        this.anclaObj.scale.setScalar(0.52);
+                        this.poseInicializada = true;
+                    }
+
                     if (this.mixer && this.actions.length > 0) {
+                        this.mixer.timeScale = window.ficha.velocidadAnimacion ?? 0.38;
                         this.actions.forEach(a => {
                             a.paused = false;
                             a.play();
@@ -789,25 +1328,34 @@
                         statusPill.classList.remove('retencion');
                         statusPill.classList.add('activo');
                     }
-                    if (estadoUI) estadoUI.textContent = "Conectado";
-                });
+                    if (estadoUI) estadoUI.textContent = "Conectado · Explorable 360°";
+                    if (window.mostrarHintExploracionUI) window.mostrarHintExploracionUI();
+                };
 
-                targetEl.addEventListener('targetLost', () => {
+                this.perderTarget = (inmediato = false) => {
                     this.rastreandoEnVivo = false;
+                    this.simulandoPreview = false;
                     if (this.estado !== 'OCULTO') {
-                        this.estado = 'RETENCION';
-                        this.tiempoPerdidaInicio = performance.now();
-                        if (statusPill) {
-                            statusPill.classList.remove('activo');
-                            statusPill.classList.add('retencion');
+                        if (inmediato) {
+                            this.estado = 'DESMATERIALIZANDO';
+                            if (this.anilloEscaner) this.anilloEscaner.visible = true;
+                        } else {
+                            this.estado = 'RETENCION';
+                            this.tiempoPerdidaInicio = performance.now();
+                            if (statusPill) {
+                                statusPill.classList.remove('activo');
+                                statusPill.classList.add('retencion');
+                            }
+                            if (estadoUI) estadoUI.textContent = "Estabilizando...";
                         }
-                        if (estadoUI) estadoUI.textContent = "Estabilizando...";
                     }
-                });
+                };
+
+                targetEl.addEventListener('targetFound', () => this.activarTarget(false));
+                targetEl.addEventListener('targetLost', () => this.perderTarget(false));
             },
 
             restaurarColoresOriginales: function () {
-                // Oculta el anillo y desactiva el recorte sin recompilar shaders
                 if (this.anilloEscaner) this.anilloEscaner.visible = false;
                 this.planoCorte.constant = 1000;
 
@@ -823,7 +1371,7 @@
             actualizarEfectoMaterializacion: function (delta) {
                 const THREE = AFRAME.THREE;
                 if (this.estado === 'MATERIALIZANDO') {
-                    const dur = (window.ficha.duracionMaterializacionMs || 1500) / 1000;
+                    const dur = (window.ficha.duracionMaterializacionMs || 1650) / 1000;
                     this.progresoMat = Math.min(1.0, this.progresoMat + delta / dur);
                     if (this.progresoMat >= 1.0) {
                         this.estado = 'ACTIVO';
@@ -852,7 +1400,7 @@
                 if (this.anilloEscaner) {
                     this.anilloEscaner.visible = true;
                     this.anilloEscaner.position.set(0, alturaLocal, 0);
-                    this.anilloEscaner.rotation.y += delta * 3.2;
+                    this.anilloEscaner.rotation.y += delta * 2.4;
 
                     this.el.object3D.updateMatrixWorld(true);
                     this.anilloEscaner.getWorldPosition(this._planePoint);
@@ -861,9 +1409,7 @@
                     this.planoCorte.setFromNormalAndCoplanarPoint(this._planeNormal, this._planePoint);
                 }
 
-                // Brillo sutil durante el escaneo que se desvanece a 0 al llegar a t=1.0
-                // dejando los colores originales del modelo intactos
-                const pulso = Math.sin(t * Math.PI) * 0.45;
+                const pulso = Math.sin(t * Math.PI) * 0.42;
                 for (let i = 0; i < this.materialesAnimables.length; i++) {
                     const mat = this.materialesAnimables[i];
                     if (mat.emissive && mat.userData.origEmissive) {
@@ -881,12 +1427,12 @@
             tick: function (time, timeDelta) {
                 if (this.estado === 'OCULTO') return;
 
-                // Suavizado de delta time para evitar saltos en la animación 3D
                 const rawDelta = Math.min(Math.max((timeDelta || 16.6) * 0.001, 0.001), 0.04);
                 this.smoothDelta += (rawDelta - this.smoothDelta) * 0.25;
                 const delta = this.smoothDelta;
                 this.relojPulso += delta;
 
+                // 1. Seguir suavemente al target de MindAR cuando está visible en cámara
                 if (this.rastreandoEnVivo && this.targetObj.visible) {
                     const mat = this.targetObj.matrix;
                     if (mat && mat.elements[15] !== 0) {
@@ -906,11 +1452,12 @@
                             }
                         }
                     }
-                } else if (this.estado === 'RETENCION') {
+                } else if (this.estado === 'RETENCION' && !this.simulandoPreview) {
+                    // Retención de 4.5s si se pierde momentáneamente el sticker
                     const transcurrido = performance.now() - this.tiempoPerdidaInicio;
                     const maxRetencion = window.ficha.tiempoRetencionPerdidaMs || 4500;
 
-                    this.anclaObj.position.y += Math.sin(this.relojPulso * 3.0) * 0.0003;
+                    this.anclaObj.position.y += Math.sin(this.relojPulso * 2.5) * 0.00025;
 
                     if (transcurrido >= maxRetencion) {
                         this.estado = 'DESMATERIALIZANDO';
@@ -918,15 +1465,31 @@
                     }
                 }
 
+                // 2. Actualizar barrido holográfico si está materializando o desmaterializando
                 if (this.estado === 'MATERIALIZANDO' || this.estado === 'DESMATERIALIZANDO') {
                     this.actualizarEfectoMaterializacion(delta);
                 }
 
+                // 3. Interpolar suavemente la rotación y zoom táctil del usuario (Exploración 360°)
+                const smoothInteract = 1.0 - Math.exp(-14.0 * delta);
+                this.rotUsuarioY += (this.targetRotUsuarioY - this.rotUsuarioY) * smoothInteract;
+                this.rotUsuarioX += (this.targetRotUsuarioX - this.rotUsuarioX) * smoothInteract;
+                this.escalaUsuario += (this.targetEscalaUsuario - this.escalaUsuario) * smoothInteract;
+
+                // 4. Giro lento y majestuoso en loop + rotación de exploración del usuario
                 if (this.mixer) {
                     this.mixer.update(delta);
-                } else if (this.giroRespaldo && this.contenedor) {
-                    this.contenedor.rotation.y += delta * 1.5;
+                    this.grupoExploracion.rotation.set(this.rotUsuarioX, this.rotUsuarioY, 0);
+                } else if (this.giroRespaldo) {
+                    const velLenta = window.ficha.velocidadGiroRespaldo ?? 0.42;
+                    this.anguloGiroLento += delta * velLenta;
+                    this.grupoExploracion.rotation.set(
+                        this.rotUsuarioX,
+                        this.anguloGiroLento + this.rotUsuarioY,
+                        0
+                    );
                 }
+                this.grupoExploracion.scale.setScalar(this.escalaUsuario);
             }
         });
     </script>
@@ -934,17 +1497,23 @@
 
 <body>
 
+    <div class="spatial-vignette"></div>
     <div id="flashPantalla"></div>
 
-    <!-- BARRA SUPERIOR CON BOTÓN DE INSTAGRAM E INFO -->
+    <!-- BARRA SUPERIOR SPATIAL GLASS -->
     <div class="top-bar">
         <div class="status-pill" id="statusPill">
             <span class="status-dot"></span>
-            <span id="estadoCarga">Iniciando...</span>
+            <span id="estadoCarga">Iniciando AR...</span>
         </div>
 
         <div class="top-actions">
-            <a id="btnInstagramTop" class="btn-ig-top" href="https://www.instagram.com/asteroidae9999/?hl=en" target="_blank" rel="noopener noreferrer" aria-label="Instagram @asteroidae9999">
+            <!-- Botón de prueba interactiva para el visualizador (aparece si se prueba sin el sticker físico) -->
+            <button id="btnSimularAR" class="btn-spatial-pill" type="button" style="display:none;" aria-label="Probar modelo 3D en vivo">
+                <span>⚡ Vista 3D</span>
+            </button>
+
+            <a id="btnInstagramTop" class="btn-spatial-pill btn-ig-top" href="https://www.instagram.com/asteroidae9999/?hl=en" target="_blank" rel="noopener noreferrer" aria-label="Instagram @asteroidae9999">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                     <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
@@ -952,18 +1521,22 @@
                 </svg>
                 <span>@asteroidae9999</span>
             </a>
-            <button id="btnAbrirFicha" aria-label="Información de la pieza">i</button>
+
+            <button id="btnAbrirFicha" class="btn-spatial-pill" type="button" aria-label="Información de la pieza">i</button>
         </div>
     </div>
 
-    <!-- GUÍA DE ESCANEO ORGÁNICA SIN TEXTO -->
+    <!-- GUÍA DE ESCANEO ORGÁNICA SIN TEXTO INFERIOR -->
     <div id="ui-escaneo">
         <div class="marco-escaner" id="marcoEscaner">
             <div class="linea-escaner"></div>
         </div>
     </div>
 
-    <!-- CONTROLES DE CAPTURA -->
+    <!-- PÍLDORA SUTIL DE GESTOS 360° -->
+    <div id="hintExploracion">Arrastra para explorar 360° · Pellizca para zoom</div>
+
+    <!-- DOCK DE CAPTURA SPATIAL GLASS (ÚNICAMENTE FOTO Y VIDEO) -->
     <div class="contenedor-controles">
         <div id="badgeTiempo">
             <span class="punto-parpadeo"></span>
@@ -971,25 +1544,28 @@
         </div>
 
         <div class="dock-captura">
-            <button class="btn-icono" id="btnFoto" aria-label="Tomar foto">
-                <div class="nucleo-foto">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                        <circle cx="12" cy="13" r="4"></circle>
-                    </svg>
-                </div>
-            </button>
+            <div class="btn-captura-wrap">
+                <button class="btn-icono" id="btnFoto" type="button" aria-label="Tomar fotografía AR">
+                    <div class="nucleo-foto">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                            <circle cx="12" cy="13" r="4"></circle>
+                        </svg>
+                    </div>
+                </button>
+            </div>
 
-            <button class="btn-icono" id="btnVideo" aria-label="Grabar video">
-                <div class="nucleo-video"></div>
-            </button>
+            <div class="dock-divider" aria-hidden="true"></div>
 
-            <button class="btn-icono" id="btnCambiarCamara" aria-label="Cambiar cámara">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20 11A8.1 8.1 0 0 0 4.5 9M4 5v4h4"></path>
-                    <path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"></path>
-                </svg>
-            </button>
+            <div class="btn-captura-wrap">
+                <button class="btn-icono" id="btnVideo" type="button" aria-label="Grabar video AR">
+                    <div class="nucleo-video">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <circle cx="12" cy="12" r="6"></circle>
+                        </svg>
+                    </div>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1002,9 +1578,9 @@
             </div>
             <div class="contenedor-media" id="contenedorMedia"></div>
             <div class="acciones-preview">
-                <button class="btn-modal" id="btnCerrarPreview">✕</button>
-                <button class="btn-modal" id="btnCompartir">Compartir</button>
-                <button class="btn-modal" id="btnDescargar">⬇ Guardar</button>
+                <button class="btn-modal" id="btnCerrarPreview" type="button">✕</button>
+                <button class="btn-modal" id="btnCompartir" type="button">Compartir</button>
+                <button class="btn-modal" id="btnDescargar" type="button">⬇ Guardar</button>
             </div>
         </div>
     </div>
@@ -1016,7 +1592,7 @@
                 <span class="badge-categoria" id="uiCategoria"></span>
                 <h1 class="titulo-obra" id="uiTitulo"></h1>
             </div>
-            <button class="boton-cerrar-ficha" id="btnCerrarFicha">Cerrar</button>
+            <button class="boton-cerrar-ficha" id="btnCerrarFicha" type="button">Cerrar</button>
         </div>
 
         <div class="datos-grid">
@@ -1050,7 +1626,7 @@
     </section>
 
     <!-- ===================================================== -->
-    <!-- ESCENA AR (ILUMINACIÓN NEUTRA FIEL AL MODELO ORIGINAL)-->
+    <!-- ESCENA AR                                             -->
     <!-- ===================================================== -->
     <a-scene
         id="escenaAR"
@@ -1062,11 +1638,11 @@
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
-        <!-- Iluminación balanceada para respetar los colores reales del modelo y dar reflejo al negro metálico -->
+        <!-- Iluminación balanceada que respeta los colores originales y realza el negro metálico -->
         <a-light type="hemisphere" color="#ffffff" groundColor="#4a4a52" intensity="1.0"></a-light>
         <a-light type="ambient" color="#ffffff" intensity="1.1"></a-light>
         <a-light type="directional" color="#ffffff" intensity="2.0" position="1.5 2.5 2"></a-light>
-        <a-light type="directional" color="#e0f2fe" intensity="0.9" position="-1.5 -1 1.2"></a-light>
+        <a-light type="directional" color="#e0f2fe" intensity="0.95" position="-1.5 -1 1.2"></a-light>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
@@ -1084,13 +1660,12 @@
     </a-scene>
 
     <!-- ===================================================== -->
-    <!-- LÓGICA DE INTERFAZ, CÁMARA Y GRABACIÓN                -->
+    <!-- LÓGICA DE INTERFAZ Y CAPTURA MULTIMEDIA               -->
     <!-- ===================================================== -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const escenaEl = document.getElementById("escenaAR");
 
-            // Precargar en caché local el marcador .mind para visitas subsecuentes sin gastar datos
             if (window.ficha.marcadorMind) {
                 obtenerUrlConCache(window.ficha.marcadorMind);
             }
@@ -1142,24 +1717,40 @@
             btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
-            // 4. Detección visual
+            // 4. Detección visual y modo de prueba para el visualizador
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
             const estadoCarga = document.getElementById("estadoCarga");
             const statusPill = document.getElementById("statusPill");
+            const hintExploracion = document.getElementById("hintExploracion");
+            const btnSimularAR = document.getElementById("btnSimularAR");
 
             let timeoutOcultarUI = null;
+            let timeoutHint = null;
 
-            objetivoAR.addEventListener("targetFound", () => {
+            window.mostrarHintExploracionUI = () => {
+                clearTimeout(timeoutHint);
+                hintExploracion.classList.add("visible");
+                timeoutHint = setTimeout(() => {
+                    hintExploracion.classList.remove("visible");
+                }, 4200);
+            };
+
+            function alDetectarTargetUI() {
                 clearTimeout(timeoutOcultarUI);
                 marcoEscaner.classList.add("detectado");
-                btnAbrirFicha.style.display = "flex";
+                btnAbrirFicha.style.display = "inline-flex";
                 if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} }
 
                 timeoutOcultarUI = setTimeout(() => {
                     uiEscaneo.style.opacity = "0";
                 }, 400);
+            }
+
+            objetivoAR.addEventListener("targetFound", () => {
+                btnSimularAR.classList.remove("activo");
+                alDetectarTargetUI();
             });
 
             window.notificarPerdidaDefinitivaUI = () => {
@@ -1167,87 +1758,35 @@
                 uiEscaneo.style.opacity = "1";
                 marcoEscaner.classList.remove("detectado");
                 panelInferior.classList.remove("visible");
+                hintExploracion.classList.remove("visible");
                 btnAbrirFicha.style.display = "none";
+                btnSimularAR.classList.remove("activo");
                 statusPill.classList.remove("activo", "retencion");
                 estadoCarga.textContent = "Listo para escanear";
             };
 
-            // 5. Cambio de cámara
-            const btnCambiarCamara = document.getElementById("btnCambiarCamara");
+            // Botón de simulación para probar en el visualizador en vivo sin el sticker físico
+            btnSimularAR.addEventListener("click", () => {
+                const comp = entidadModelo.components["modelo-cyberpunk-ar"];
+                if (!comp) return;
+                if (comp.estado === "OCULTO" || comp.estado === "DESMATERIALIZANDO") {
+                    btnSimularAR.classList.add("activo");
+                    alDetectarTargetUI();
+                    comp.activarTarget(true);
+                } else {
+                    btnSimularAR.classList.remove("activo");
+                    comp.perderTarget(true);
+                }
+            });
+
+            // 5. Captura de FOTO
+            const btnFoto = document.getElementById("btnFoto");
+            const flashPantalla = document.getElementById("flashPantalla");
 
             function invalidarRectsCompositor() {
                 const comp = escenaEl.components["compositor-ar"];
                 if (comp && typeof comp.invalidarRects === "function") comp.invalidarRects();
             }
-
-            async function cambiarCamara() {
-                if (window._cambiandoCamara) return;
-                window._cambiandoCamara = true;
-                btnCambiarCamara.disabled = true;
-                btnCambiarCamara.classList.toggle("girando");
-
-                const modoPrevio = window.modoCamaraActual;
-                const nuevoModo = modoPrevio === "environment" ? "user" : "environment";
-                window.modoCamaraActual = nuevoModo;
-
-                let ok = false;
-
-                try {
-                    const mindarSystem = escenaEl.systems["mindar-image-system"];
-                    if (mindarSystem && typeof mindarSystem.switchCamera === "function") {
-                        const r = mindarSystem.switchCamera();
-                        if (r && typeof r.then === "function") await r;
-                        ok = true;
-                    }
-                } catch (err) {
-                    console.warn("[camera] switchCamera() falló:", err);
-                }
-
-                if (!ok) {
-                    try {
-                        const videos = document.querySelectorAll("video");
-                        videos.forEach(v => {
-                            if (v.srcObject) {
-                                try { v.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {}
-                            }
-                        });
-
-                        const stream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                facingMode: { ideal: nuevoModo },
-                                width: { ideal: window.ficha.camara.width },
-                                height: { ideal: window.ficha.camara.height }
-                            },
-                            audio: false
-                        });
-
-                        for (const video of videos) {
-                            video.srcObject = stream;
-                            try { await video.play(); } catch (e) {}
-                        }
-                        ok = true;
-                    } catch (err) {
-                        console.error("[camera] fallback getUserMedia falló:", err);
-                    }
-                }
-
-                if (!ok) {
-                    window.modoCamaraActual = modoPrevio;
-                    btnCambiarCamara.classList.toggle("girando");
-                } else {
-                    invalidarRectsCompositor();
-                    setTimeout(invalidarRectsCompositor, 400);
-                }
-
-                btnCambiarCamara.disabled = false;
-                window._cambiandoCamara = false;
-            }
-
-            btnCambiarCamara.addEventListener("click", cambiarCamara);
-
-            // 6. Captura de FOTO
-            const btnFoto = document.getElementById("btnFoto");
-            const flashPantalla = document.getElementById("flashPantalla");
 
             btnFoto.addEventListener("click", async () => {
                 if (window.capturadorAR.grabandoVideo) return;
@@ -1271,7 +1810,7 @@
                 }, 600);
             });
 
-            // 7. Grabación de VIDEO HD
+            // 6. Grabación de VIDEO HD
             const btnVideo = document.getElementById("btnVideo");
             const badgeTiempo = document.getElementById("badgeTiempo");
             const textoTiempo = document.getElementById("textoTiempo");
@@ -1388,7 +1927,7 @@
                 }
             });
 
-            // 8. Modal de vista previa
+            // 7. Modal de vista previa
             const modalPreview = document.getElementById("modalPreview");
             const contenedorMedia = document.getElementById("contenedorMedia");
             const pesoArchivo = document.getElementById("pesoArchivo");
