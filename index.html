@@ -16,10 +16,8 @@
             marcadorMind: "./targets/imagen_rastreo.mind",
             instagramUrl: "https://www.instagram.com/asteroidae9999/?hl=en",
 
-            // Escala base + auto-encuadre para ver siempre el modelo 100% completo
-            escala: 1.85,
-            autoEncuadreEspacial: true,
-            margenPantalla: 0.78,
+            // Tamaño único fijo: triple de la escala anterior (1.85 x 3 = 5.55)
+            escala: 5.55,
             rotacionInicial: "0 0 0",
 
             // ===== Velocidad de Animación Fluida (60 FPS) =====
@@ -84,12 +82,11 @@
             });
         };
 
-        // Interceptor getUserMedia con triple contingencia (nunca falla por OverconstrainedError)
+        // Interceptor getUserMedia con triple contingencia
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const getUserMediaNativo = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 
-            window.solicitarStreamCamaraSeguro = async function (constraintsOriginales) {
-                // Reutilizar stream activo si ya está encendido para evitar bloqueo de hardware
+            window.solicitarStreamCamaraSeguro = async function () {
                 if (window.__streamCamaraAR && window.__streamCamaraAR.active) {
                     const tracks = window.__streamCamaraAR.getVideoTracks();
                     if (tracks.length > 0 && tracks[0].readyState === "live") {
@@ -104,7 +101,6 @@
 
                 window.__promesaStreamAR = (async () => {
                     const intentos = [
-                        // Intento 1: Cámara trasera HD sin límite rígido de frameRate que bloquee móviles
                         {
                             audio: false,
                             video: {
@@ -113,12 +109,10 @@
                                 height: { ideal: window.ficha.camara.height || 720 }
                             }
                         },
-                        // Intento 2: Cámara trasera estándar sin forzar resolución
                         {
                             audio: false,
                             video: { facingMode: "environment" }
                         },
-                        // Intento 3: Cualquier cámara disponible en el dispositivo (móvil o PC)
                         {
                             audio: false,
                             video: true
@@ -184,7 +178,6 @@
             user-select: none;
         }
 
-        /* CRÍTICO: body debe tener background: transparent para NO tapar el <video> de MindAR */
         html {
             margin: 0;
             padding: 0;
@@ -206,7 +199,6 @@
             touch-action: none;
         }
 
-        /* Garantiza que tanto el video base como el video de MindAR sean siempre visibles */
         #videoCamaraBase,
         body > video {
             position: fixed !important;
@@ -225,7 +217,6 @@
             pointer-events: none !important;
         }
 
-        /* Escena A-Frame transparente sobre el video en todo el espacio de la pantalla */
         a-scene#escenaAR {
             position: fixed !important;
             inset: 0 !important;
@@ -374,7 +365,6 @@
             font-size: 13px;
         }
 
-        /* Botón central de desbloqueo si el navegador requiere toque manual para la cámara */
         #btnPermisoCamara {
             position: fixed;
             top: 50%;
@@ -857,13 +847,13 @@
     </style>
 
     <!-- ===================================================== -->
-    <!-- 4. MOTOR AR: ENCUADRE COMPLETO + CERO CORTES + 60 FPS -->
+    <!-- 4. MOTOR AR: TAMAÑO FIJO 3X + GIRO TÁCTIL + SIN ZOOM  -->
     <!-- ===================================================== -->
     <script>
         async function obtenerUrlConCache(url) {
             if (!('caches' in window)) return url;
             try {
-                const cache = await caches.open('torimask-ar-cache-v3');
+                const cache = await caches.open('torimask-ar-cache-v4');
                 let response = await cache.match(url);
                 if (!response) {
                     response = await fetch(url, { cache: 'force-cache' });
@@ -1015,7 +1005,7 @@
         });
 
         // ============================================================
-        // COMPONENTE PRINCIPAL: SIN PLANOS DE CORTE + ENCUADRE SEGURO
+        // COMPONENTE PRINCIPAL: TAMAÑO FIJO 3X + GIRO CON LOS DEDOS
         // ============================================================
         AFRAME.registerComponent('modelo-cyberpunk-ar', {
             init: function () {
@@ -1037,19 +1027,16 @@
                 this.relojPulso = 0;
                 this.smoothDelta = 1 / 60;
 
-                // Variables para exploración interactiva 360° (drag + pinch zoom)
+                // Variables únicamente para rotación táctil 360° (sin zoom)
                 this.rotUsuarioY = 0;
                 this.rotUsuarioX = 0;
                 this.targetRotUsuarioY = 0;
                 this.targetRotUsuarioX = 0;
-                this.escalaUsuario = 1.0;
-                this.targetEscalaUsuario = 1.0;
-                this.factorAutoFit = 1.0;
                 this.anguloGiroLento = 0;
 
-                this.radioModeloLocal = 1.0;
-                this.minYLocal = -1.0;
-                this.maxYLocal = 1.0;
+                this.radioModeloLocal = 2.75;
+                this.minYLocal = -2.75;
+                this.maxYLocal = 2.75;
 
                 this._tPos = new THREE.Vector3();
                 this._tQuat = new THREE.Quaternion();
@@ -1065,7 +1052,6 @@
                 this.targetObj = targetEl.object3D;
                 this.anclaObj.visible = false;
 
-                // Desactivar planos de corte en GPU para evitar cualquier recorte del modelo
                 const configurarRenderer = () => {
                     if (el.sceneEl && el.sceneEl.renderer) {
                         el.sceneEl.renderer.localClippingEnabled = false;
@@ -1110,7 +1096,6 @@
                     return group;
                 };
 
-                // Identifica la malla del tribal para aplicarle negro metalizado sin alterar la máscara
                 const esMallaTribal = (node, mat, totalMallas) => {
                     const etiqueta = ((node.name || "") + " " + (node.parent?.name || "") + " " + (mat.name || "")).toLowerCase();
                     if (/tribal|sigil|symbol|curve|logo|tatu|demon|inner|vector|path/i.test(etiqueta)) {
@@ -1126,7 +1111,7 @@
                     return false;
                 };
 
-                // Modelo 3D procedural de respaldo cuando no está el archivo .glb local
+                // Modelo 3D procedural de respaldo con tamaño único 3x
                 const construirModeloRespaldoProcedural = () => {
                     const root = new THREE.Group();
 
@@ -1202,7 +1187,7 @@
                     meshEsfera.renderOrder = 2;
                     root.add(meshEsfera);
 
-                    const escalaObjetivo = window.ficha.escala || 1.85;
+                    const escalaObjetivo = window.ficha.escala || 5.55;
                     root.scale.setScalar(escalaObjetivo * 0.65);
 
                     this.radioModeloLocal = escalaObjetivo * 0.52;
@@ -1247,7 +1232,6 @@
                                 }
                             });
 
-                            // 1. Medir Bounding Box completo incluyendo el ciclo de animación
                             model.updateMatrixWorld(true);
                             const boxGlobal = new THREE.Box3();
                             listaNodos.forEach((n) => boxGlobal.expandByObject(n));
@@ -1281,7 +1265,6 @@
 
                             if (boxGlobal.isEmpty()) boxGlobal.setFromObject(model);
 
-                            // 2. Configurar materiales con DoubleSide y sin planos de corte
                             const materialesVistos = new Set();
 
                             listaNodos.forEach((node) => {
@@ -1327,7 +1310,7 @@
                                 node.renderOrder = nodoEsTransparente ? 2 : 1;
                             });
 
-                            // 3. Centrar usando la diagonal envolvente 3D para que al girar nunca se recorte
+                            // Centrar y fijar un único tamaño al triple (5.55)
                             const size = boxGlobal.getSize(new THREE.Vector3());
                             const center = boxGlobal.getCenter(new THREE.Vector3());
                             const maxDim = Math.max(size.x, size.y, size.z, size.length() * 0.72);
@@ -1338,7 +1321,7 @@
                             offsetGroup.add(model);
                             pivotGroup.add(offsetGroup);
 
-                            const escalaObjetivo = window.ficha.escala || 1.85;
+                            const escalaObjetivo = window.ficha.escala || 5.55;
                             if (Number.isFinite(maxDim) && maxDim > 0.0001) {
                                 const factor = escalaObjetivo / maxDim;
                                 offsetGroup.position.set(-center.x, -center.y, -center.z);
@@ -1377,12 +1360,10 @@
                 }
 
                 // ============================================================
-                // GESTOS TÁCTILES Y DE MOUSE PARA EXPLORACIÓN 360° + ZOOM
+                // GESTOS TÁCTILES: SOLO ROTACIÓN 360° CON DEDOS (SIN ZOOM)
                 // ============================================================
                 let arrastrando = false;
                 let prevX = 0, prevY = 0;
-                let distPinchInicial = 0;
-                let escalaPinchInicial = 1.0;
                 let ultimoTap = 0;
 
                 const esElementoUI = (target) => {
@@ -1393,9 +1374,9 @@
                     if (this.estado === 'OCULTO' || esElementoUI(e.target)) return;
                     const ahora = performance.now();
                     if (ahora - ultimoTap < 280) {
+                        // Doble toque: restablece únicamente la orientación
                         this.targetRotUsuarioY = 0;
                         this.targetRotUsuarioX = 0;
-                        this.targetEscalaUsuario = 1.0;
                     }
                     ultimoTap = ahora;
                     arrastrando = true;
@@ -1421,37 +1402,6 @@
                 window.addEventListener('pointerup', () => { arrastrando = false; }, { passive: true });
                 window.addEventListener('pointercancel', () => { arrastrando = false; }, { passive: true });
 
-                window.addEventListener('touchstart', (e) => {
-                    if (this.estado === 'OCULTO') return;
-                    if (e.touches.length === 2) {
-                        arrastrando = false;
-                        distPinchInicial = Math.hypot(
-                            e.touches[0].clientX - e.touches[1].clientX,
-                            e.touches[0].clientY - e.touches[1].clientY
-                        );
-                        escalaPinchInicial = this.targetEscalaUsuario;
-                    }
-                }, { passive: true });
-
-                window.addEventListener('touchmove', (e) => {
-                    if (this.estado === 'OCULTO' || e.touches.length !== 2 || distPinchInicial <= 0) return;
-                    const distActual = Math.hypot(
-                        e.touches[0].clientX - e.touches[1].clientX,
-                        e.touches[0].clientY - e.touches[1].clientY
-                    );
-                    const factor = distActual / distPinchInicial;
-                    this.targetEscalaUsuario = THREE.MathUtils.clamp(escalaPinchInicial * factor, 0.35, 2.5);
-                }, { passive: true });
-
-                window.addEventListener('wheel', (e) => {
-                    if (this.estado === 'OCULTO' || esElementoUI(e.target)) return;
-                    this.targetEscalaUsuario = THREE.MathUtils.clamp(
-                        this.targetEscalaUsuario - e.deltaY * 0.0012,
-                        0.35,
-                        2.5
-                    );
-                }, { passive: true });
-
                 // ============================================================
                 // ACTIVACIÓN POR TARGET DE MINDAR O MODO VISTA 3D COMPLETA
                 // ============================================================
@@ -1461,9 +1411,9 @@
                     this.anclaObj.visible = true;
 
                     if (esSimulacion) {
-                        // Z = -600 está siempre dentro de [near=10, far=10000] tanto en MindAR como en A-Frame
                         this.anclaObj.position.set(0, 0, -600);
                         this.anclaObj.quaternion.identity();
+                        // Escala única fija para el modo simulación (triple respecto al anterior)
                         this.anclaObj.scale.setScalar(260);
                         this.poseInicializada = true;
                     }
@@ -1519,6 +1469,26 @@
 
                 targetEl.addEventListener('targetFound', () => this.activarTarget(false));
                 targetEl.addEventListener('targetLost', () => this.perderTarget(false));
+            },
+
+            // Mantiene los planos near/far amplios para que el tamaño 3x nunca se corte al acercarse
+            ampliarFrustumCamara: function () {
+                const sceneEl = this.el.sceneEl;
+                if (!sceneEl || !sceneEl.camera) return;
+                const cam = sceneEl.camera;
+                const near = 0.05;
+                const far = 500000;
+                cam.near = near;
+                cam.far = far;
+
+                const p = cam.projectionMatrix && cam.projectionMatrix.elements;
+                if (p && p[0] !== 0) {
+                    p[10] = -(far + near) / (far - near);
+                    p[14] = -(2 * far * near) / (far - near);
+                    if (cam.projectionMatrixInverse) {
+                        cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+                    }
+                }
             },
 
             restaurarColoresOriginales: function () {
@@ -1583,6 +1553,7 @@
             },
 
             tick: function (time, timeDelta) {
+                this.ampliarFrustumCamara();
                 if (this.estado === 'OCULTO') return;
 
                 const rawDelta = Math.min(Math.max((timeDelta || 16.6) * 0.001, 0.001), 0.04);
@@ -1590,10 +1561,7 @@
                 const delta = this.smoothDelta;
                 this.relojPulso += delta;
 
-                const cam = this.el.sceneEl && this.el.sceneEl.camera;
-                const proj = cam && cam.projectionMatrix ? cam.projectionMatrix.elements : null;
-
-                // 1. Seguir al target de MindAR o mantener encuadre en Vista 3D
+                // 1. Seguir el movimiento espacial del usuario respecto al sticker con tamaño fijo
                 if (this.rastreandoEnVivo && this.targetObj.visible) {
                     const mat = this.targetObj.matrix;
                     if (mat && mat.elements[15] !== 0) {
@@ -1613,13 +1581,6 @@
                             }
                         }
                     }
-                } else if (this.simulandoPreview && proj && proj[0] !== 0 && proj[5] !== 0) {
-                    // En modo Vista 3D adapta automáticamente la escala a la matriz activa (MindAR o A-Frame)
-                    const distSim = 600;
-                    this.anclaObj.position.set(0, 0, -distSim);
-                    const minHalf = Math.min(distSim / Math.abs(proj[0]), distSim / Math.abs(proj[5]));
-                    const escalaIdealAncla = (minHalf * 0.72) / Math.max(0.1, this.radioModeloLocal);
-                    this.anclaObj.scale.setScalar(escalaIdealAncla);
                 } else if (this.estado === 'RETENCION' && !this.simulandoPreview) {
                     const transcurrido = performance.now() - this.tiempoPerdidaInicio;
                     const maxRetencion = window.ficha.tiempoRetencionPerdidaMs || 5000;
@@ -1632,27 +1593,7 @@
                     }
                 }
 
-                // 2. Auto-Encuadre Espacial en AR: evita que el modelo cruce near=10 o se salga de los bordes
-                let targetAutoFit = 1.0;
-                if (!this.simulandoPreview && window.ficha.autoEncuadreEspacial && proj && proj[0] !== 0 && proj[5] !== 0) {
-                    const distZ = Math.max(25, Math.abs(this.anclaObj.position.z));
-                    const halfWidthWorld = distZ / Math.abs(proj[0]);
-                    const halfHeightWorld = distZ / Math.abs(proj[5]);
-                    const minHalfScreen = Math.min(halfWidthWorld, halfHeightWorld);
-
-                    const margen = window.ficha.margenPantalla || 0.78;
-                    const maxRadioSeguroWorld = Math.min(minHalfScreen * margen, (distZ - 15) * 0.75);
-
-                    const escalaAncla = Math.max(0.0001, this.anclaObj.scale.x);
-                    const radioActualWorld = this.radioModeloLocal * escalaAncla;
-
-                    if (radioActualWorld > maxRadioSeguroWorld && maxRadioSeguroWorld > 0) {
-                        targetAutoFit = maxRadioSeguroWorld / radioActualWorld;
-                    }
-                }
-                this.factorAutoFit += (targetAutoFit - this.factorAutoFit) * (1.0 - Math.exp(-16.0 * delta));
-
-                // 3. Actualizar materialización holográfica
+                // 2. Actualizar materialización holográfica
                 let factorMat = 1.0;
                 if (this.estado === 'MATERIALIZANDO' || this.estado === 'DESMATERIALIZANDO') {
                     this.actualizarEfectoMaterializacion(delta);
@@ -1660,13 +1601,12 @@
                     factorMat = Math.max(0.001, 1 - Math.pow(1 - t, 3));
                 }
 
-                // 4. Interpolar suavemente la rotación y zoom táctil del usuario (Exploración 360°)
+                // 3. Interpolar suavemente la rotación táctil con el dedo (sin zoom)
                 const smoothInteract = 1.0 - Math.exp(-16.0 * delta);
                 this.rotUsuarioY += (this.targetRotUsuarioY - this.rotUsuarioY) * smoothInteract;
                 this.rotUsuarioX += (this.targetRotUsuarioX - this.rotUsuarioX) * smoothInteract;
-                this.escalaUsuario += (this.targetEscalaUsuario - this.escalaUsuario) * smoothInteract;
 
-                // 5. Actualizar animación del GLB a buena velocidad + rotación de exploración
+                // 4. Actualizar animación del GLB + rotación táctil del usuario
                 if (this.mixer) {
                     this.mixer.update(delta);
                     this.grupoExploracion.rotation.set(this.rotUsuarioX, this.rotUsuarioY, 0);
@@ -1680,7 +1620,8 @@
                     );
                 }
 
-                this.grupoExploracion.scale.setScalar(this.escalaUsuario * this.factorAutoFit * factorMat);
+                // Tamaño 100% constante una vez materializado
+                this.grupoExploracion.scale.setScalar(factorMat);
             }
         });
     </script>
@@ -1688,10 +1629,10 @@
 
 <body>
 
-    <!-- VIDEO BASE DE CÁMARA DIRECTA: Muestra la cámara al instante incluso mientras MindAR compila -->
+    <!-- VIDEO BASE DE CÁMARA DIRECTA -->
     <video id="videoCamaraBase" autoplay muted playsinline webkit-playsinline></video>
 
-    <!-- BOTÓN DE DESBLOQUEO (solo aparece si el navegador móvil bloqueó el auto-inicio de cámara) -->
+    <!-- BOTÓN DE DESBLOQUEO (solo aparece si el navegador bloqueó el auto-inicio de cámara) -->
     <button id="btnPermisoCamara" type="button">📷 Activar Cámara AR</button>
 
     <div class="spatial-vignette"></div>
@@ -1729,8 +1670,8 @@
         </div>
     </div>
 
-    <!-- PÍLDORA SUTIL DE GESTOS 360° -->
-    <div id="hintExploracion">Arrastra para explorar 360° · Pellizca para zoom · Doble toque centra</div>
+    <!-- PÍLDORA SUTIL DE GESTOS 360° (SIN ZOOM) -->
+    <div id="hintExploracion">Arrastra para girar 360° · Muévete para explorar · Doble toque centra</div>
 
     <!-- DOCK DE CAPTURA SPATIAL GLASS (FOTO Y VIDEO) -->
     <div class="contenedor-controles">
@@ -1839,7 +1780,7 @@
         <a-light type="directional" color="#ffffff" intensity="2.0" position="1.5 2.5 2"></a-light>
         <a-light type="directional" color="#e0f2fe" intensity="0.95" position="-1.5 -1 1.2"></a-light>
 
-        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        <a-camera position="0 0 0" look-controls="enabled: false" near="0.05" far="500000"></a-camera>
 
         <a-entity mindar-image-target="targetIndex: 0" id="objetivoAR"></a-entity>
 
@@ -1860,12 +1801,10 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             const escenaEl = document.getElementById("escenaAR");
-            const videoBase = document.getElementById("videoCamaraBase");
             const btnPermisoCamara = document.getElementById("btnPermisoCamara");
             const entidadModelo = document.getElementById("entidadModelo");
             const btnSimularAR = document.getElementById("btnSimularAR");
 
-            // 1. Iniciar cámara de forma proactiva e inmediata al abrir la página
             function arrancarCamaraAhora() {
                 if (window.solicitarStreamCamaraSeguro) {
                     window.solicitarStreamCamaraSeguro().then((stream) => {
@@ -1884,7 +1823,6 @@
                 arrancarCamaraAhora();
             });
 
-            // Vigilar cuando MindAR inyecte su propio elemento <video> para asegurar su reproducción
             const observerVideos = new MutationObserver(() => {
                 if (window.__streamCamaraAR) {
                     window.vincularStreamAVideos(window.__streamCamaraAR);
@@ -1892,7 +1830,6 @@
             });
             observerVideos.observe(document.body, { childList: true });
 
-            // Si el archivo .mind no existe en el entorno de prueba, desplegar automáticamente el modelo 3D sobre la cámara
             fetch(window.ficha.marcadorMind, { method: "HEAD" })
                 .then((res) => {
                     if (!res.ok) throw new Error("mind no encontrado");
@@ -1908,7 +1845,6 @@
                     }, 900);
                 });
 
-            // 2. Cargar datos de la ficha e Instagram
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
@@ -1931,7 +1867,6 @@
                 botonMapa.style.display = "inline-flex";
             }
 
-            // 3. Ajustar resolución del renderer para máxima fluidez (60fps)
             function aplicarViewerPixelRatio() {
                 const renderer = escenaEl && escenaEl.renderer;
                 if (!renderer || typeof renderer.setPixelRatio !== 'function') return;
@@ -1946,7 +1881,6 @@
                 escenaEl.addEventListener('loaded', aplicarViewerPixelRatio);
             }
 
-            // 4. Ficha informativa
             const panelInferior = document.getElementById("panelInferior");
             const btnAbrirFicha = document.getElementById("btnAbrirFicha");
             const btnCerrarFicha = document.getElementById("btnCerrarFicha");
@@ -1954,7 +1888,6 @@
             btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
             btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
 
-            // 5. Detección visual y botón de Vista 3D en espacio completo
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
@@ -2014,7 +1947,7 @@
                 }
             });
 
-            // 6. Captura de FOTO
+            // Captura de FOTO
             const btnFoto = document.getElementById("btnFoto");
             const flashPantalla = document.getElementById("flashPantalla");
 
@@ -2033,7 +1966,7 @@
                 window.capturadorAR.solicitarFoto = true;
             });
 
-            // 7. Grabación de VIDEO HD
+            // Grabación de VIDEO HD
             const btnVideo = document.getElementById("btnVideo");
             const badgeTiempo = document.getElementById("badgeTiempo");
             const textoTiempo = document.getElementById("textoTiempo");
@@ -2150,7 +2083,7 @@
                 }
             });
 
-            // 8. Modal de vista previa
+            // Modal de vista previa
             const modalPreview = document.getElementById("modalPreview");
             const contenedorMedia = document.getElementById("contenedorMedia");
             const pesoArchivo = document.getElementById("pesoArchivo");
