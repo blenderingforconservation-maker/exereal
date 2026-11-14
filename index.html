@@ -7,10 +7,6 @@
     <meta name="theme-color" content="#060810">
     <title>Experiencia AR - Tori Mask</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-
     <!-- ===================================================== -->
     <!-- 1. CONFIGURACIÓN DEL PROYECTO                         -->
     <!-- ===================================================== -->
@@ -18,30 +14,32 @@
         window.ficha = {
             modelo: "./models/giro-torimask-opt.glb",
             marcadorMind: "./targets/imagen_rastreo.mind",
+            instagramUrl: "https://www.instagram.com/asteroidae9999/?hl=en",
 
             // Escala base del modelo
             escala: 3.6,
             rotacionInicial: "0 0 0",
 
-            // ===== Translucidez del tribal interior =====
-            opacidadTribal: 0.62,
-            opacidadEsfera: 0.38,
+            // ===== Acabado Negro Metalizado para el Tribal =====
+            tribalColorHex: 0x101216,
+            tribalMetalness: 0.85,
+            tribalRoughness: 0.22,
 
-            // ===== Estabilidad y Materialización =====
+            // ===== Estabilidad y Materialización Fluida =====
             tiempoRetencionPerdidaMs: 4500, // Aguanta 4.5s si se pierde el sticker
-            duracionMaterializacionMs: 1700,
-            duracionDesmaterializacionMs: 550,
-            suavizadoPose: 16.0,
+            duracionMaterializacionMs: 1500,
+            duracionDesmaterializacionMs: 500,
+            suavizadoPose: 18.0,
 
             // ===== Calidad de captura =====
-            calidadFotoJPEG: 0.94,
-            bitrateVideo: 15000000,
+            calidadFotoJPEG: 0.92,
+            bitrateVideo: 12000000,
             fpsVideo: 30,
             maxDuracionVideoSeg: 60,
 
-            // ===== Cámara de entrada ágil =====
+            // ===== Optimización de Cámara y GPU Móvil =====
             camara: { width: 1280, height: 720 },
-            viewerPixelRatioMax: 2.0,
+            viewerPixelRatioMax: 1.5, // Balance óptimo entre nitidez y 60fps estables
 
             categoria: "Stickers RA",
             titulo: "Guerrero Demonio",
@@ -65,7 +63,8 @@
                             ...videoBase,
                             facingMode: { ideal: window.modoCamaraActual },
                             width: { ideal: window.ficha.camara.width },
-                            height: { ideal: window.ficha.camara.height }
+                            height: { ideal: window.ficha.camara.height },
+                            frameRate: { ideal: 30, max: 30 }
                         }
                     };
                 }
@@ -75,7 +74,7 @@
     </script>
 
     <!-- ===================================================== -->
-    <!-- 2. LIBRERÍAS                                          -->
+    <!-- 2. LIBRERÍAS ESENCIALES (SIN DESCARGAS REDUNDANTES)   -->
     <!-- ===================================================== -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
@@ -95,16 +94,16 @@
 
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: transparent; color: var(--text-light);
         }
 
-        /* BARRA SUPERIOR MINIMALISTA Y ORGÁNICA */
+        /* BARRA SUPERIOR ORGÁNICA */
         .top-bar {
             position: fixed; top: 0; left: 0; width: 100%; z-index: 300;
             display: flex; justify-content: space-between; align-items: center;
-            padding: 16px 18px; padding-top: max(16px, env(safe-area-inset-top));
-            pointer-events: none;
+            padding: 14px 16px; padding-top: max(14px, env(safe-area-inset-top));
+            pointer-events: none; gap: 10px;
         }
 
         .status-pill {
@@ -112,9 +111,9 @@
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
             padding: 7px 14px; border-radius: 999px;
-            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-            transition: opacity 0.4s ease, border-color 0.3s ease;
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+            transition: opacity 0.35s ease, border-color 0.3s ease;
         }
 
         .status-dot {
@@ -133,20 +132,42 @@
         }
 
         #estadoCarga {
-            font-size: 11.5px; font-weight: 600; letter-spacing: 0.3px;
+            font-size: 11.5px; font-weight: 600; letter-spacing: 0.2px;
             color: var(--text-light);
         }
 
+        .top-actions {
+            display: flex; align-items: center; gap: 8px;
+            pointer-events: auto;
+        }
+
+        /* BOTÓN ORGÁNICO DE INSTAGRAM */
+        .btn-ig-top {
+            height: 38px; padding: 0 13px; border-radius: 999px;
+            background: var(--glass-bg); color: var(--text-light);
+            border: 1px solid rgba(255, 42, 117, 0.45);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+            display: inline-flex; align-items: center; gap: 6px;
+            text-decoration: none; font-size: 11.5px; font-weight: 600;
+            transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+        }
+        .btn-ig-top:active { transform: scale(0.92); }
+        .btn-ig-top svg {
+            width: 15px; height: 15px; stroke: var(--neon-magenta);
+            flex-shrink: 0;
+        }
+
         #btnAbrirFicha {
-            pointer-events: auto; display: none; width: 40px; height: 40px;
+            display: none; width: 38px; height: 38px;
             border-radius: 50%;
             background: var(--glass-bg); color: var(--text-light);
             border: 1px solid var(--glass-border);
-            font-size: 15px; font-weight: 700;
-            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            font-size: 14px; font-weight: 700;
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3); cursor: pointer;
             align-items: center; justify-content: center;
-            transition: transform 0.2s ease, border-color 0.2s ease;
+            transition: transform 0.2s ease;
         }
         #btnAbrirFicha:active { transform: scale(0.9); }
 
@@ -154,35 +175,35 @@
         #ui-escaneo {
             position: fixed; inset: 0;
             display: flex; justify-content: center; align-items: center;
-            z-index: 150; pointer-events: none; transition: opacity 0.45s ease;
+            z-index: 150; pointer-events: none; transition: opacity 0.4s ease;
         }
         .marco-escaner {
-            width: 62vw; max-width: 230px; height: 62vw; max-height: 230px;
+            width: 62vw; max-width: 226px; height: 62vw; max-height: 226px;
             border-radius: 50%; position: relative;
-            border: 1.5px solid rgba(0, 243, 255, 0.42);
-            background: radial-gradient(circle, rgba(0, 243, 255, 0.07) 0%, rgba(255, 42, 117, 0.03) 60%, transparent 75%);
-            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.28), inset 0 0 28px rgba(0, 243, 255, 0.14);
+            border: 1.5px solid rgba(0, 243, 255, 0.4);
+            background: radial-gradient(circle, rgba(0, 243, 255, 0.06) 0%, transparent 72%);
+            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.26), inset 0 0 24px rgba(0, 243, 255, 0.12);
             display: flex; align-items: center; justify-content: center;
-            transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+            transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease;
         }
         .marco-escaner.detectado {
             border-color: rgba(0, 245, 160, 0.85);
             transform: scale(1.06);
-            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.15), 0 0 36px rgba(0, 245, 160, 0.45);
+            box-shadow: 0 0 0 4000px rgba(4, 6, 14, 0.12), 0 0 32px rgba(0, 245, 160, 0.4);
         }
 
         .linea-escaner {
-            width: 76%; height: 2px; border-radius: 999px;
+            width: 74%; height: 2px; border-radius: 999px;
             background: linear-gradient(90deg, transparent, var(--neon-cyan), var(--neon-magenta), transparent);
-            box-shadow: 0 0 14px var(--neon-cyan);
-            animation: pulsoOrganico 2.4s infinite ease-in-out;
+            box-shadow: 0 0 12px var(--neon-cyan);
+            animation: pulsoOrganico 2.3s infinite ease-in-out;
             transition: opacity 0.25s ease;
         }
         .marco-escaner.detectado .linea-escaner { opacity: 0; animation-play-state: paused; }
 
         @keyframes pulsoOrganico {
-            0%, 100% { transform: translateY(-68px) scaleX(0.75); opacity: 0.3; }
-            50% { transform: translateY(68px) scaleX(0.95); opacity: 0.95; }
+            0%, 100% { transform: translateY(-64px) scaleX(0.75); opacity: 0.3; }
+            50% { transform: translateY(64px) scaleX(0.95); opacity: 0.95; }
         }
 
         /* DOCK DE CONTROLES ORGÁNICO Y LIMPIO */
@@ -198,12 +219,10 @@
             font-size: 12px; font-weight: 600; letter-spacing: 0.8px;
             padding: 5px 14px; border-radius: 999px;
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            box-shadow: 0 4px 16px rgba(255, 42, 117, 0.3);
         }
         #badgeTiempo.activo { display: flex; }
         .punto-parpadeo {
             width: 7px; height: 7px; border-radius: 50%; background: var(--neon-magenta);
-            box-shadow: 0 0 8px var(--neon-magenta);
             animation: parpadeo 1s infinite;
         }
         @keyframes parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
@@ -213,14 +232,14 @@
             background: var(--glass-bg);
             border: 1px solid var(--glass-border);
             padding: 10px 22px; border-radius: 999px;
-            backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 20px rgba(0, 243, 255, 0.12);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.42);
         }
         .btn-icono {
             position: relative; border: none; background: none; padding: 0;
             cursor: pointer; display: flex; align-items: center; justify-content: center;
             touch-action: manipulation;
-            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .btn-icono:active { transform: scale(0.88); }
 
@@ -228,7 +247,6 @@
             width: 54px; height: 54px; border-radius: 50%;
             border: 2px solid rgba(0, 243, 255, 0.85);
             background: rgba(0, 243, 255, 0.1);
-            box-shadow: 0 0 16px rgba(0, 243, 255, 0.22);
         }
         .nucleo-foto {
             width: 42px; height: 42px; border-radius: 50%;
@@ -240,17 +258,13 @@
             width: 54px; height: 54px; border-radius: 50%;
             border: 2px solid rgba(255, 42, 117, 0.85);
             background: rgba(255, 42, 117, 0.1);
-            box-shadow: 0 0 16px rgba(255, 42, 117, 0.22);
         }
         .nucleo-video {
             width: 38px; height: 38px; border-radius: 50%;
             background: linear-gradient(135deg, #ff2a75, #ff5e97);
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #btnVideo.grabando {
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 20px rgba(0, 243, 255, 0.45);
-        }
+        #btnVideo.grabando { border-color: var(--neon-cyan); }
         #btnVideo.grabando .nucleo-video {
             width: 20px; height: 20px; border-radius: 6px;
         }
@@ -267,22 +281,22 @@
         #flashPantalla {
             position: fixed; inset: 0;
             background: #ffffff; opacity: 0; pointer-events: none; z-index: 500;
-            transition: opacity 0.25s ease;
+            transition: opacity 0.22s ease;
         }
 
         /* MODAL DE VISTA PREVIA */
         #modalPreview {
             position: fixed; inset: 0;
-            background: rgba(4, 7, 15, 0.82); backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px); z-index: 600;
+            background: rgba(4, 7, 15, 0.82); backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px); z-index: 600;
             display: none; flex-direction: column; justify-content: center; align-items: center;
             padding: 18px;
         }
         #modalPreview.activo { display: flex; }
         .tarjeta-preview {
-            background: rgba(14, 19, 32, 0.92);
+            background: rgba(14, 19, 32, 0.94);
             border: 1px solid var(--glass-border);
-            border-radius: 26px; padding: 18px; width: 100%; max-width: 380px;
+            border-radius: 24px; padding: 18px; width: 100%; max-width: 380px;
             color: var(--text-light);
             box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6); text-align: center;
         }
@@ -296,7 +310,7 @@
             border-radius: 999px; font-weight: 600; font-size: 11px;
         }
         .contenedor-media {
-            width: 100%; max-height: 55vh; border-radius: 18px; overflow: hidden;
+            width: 100%; max-height: 55vh; border-radius: 16px; overflow: hidden;
             background: #000000; margin-bottom: 14px;
             display: flex; justify-content: center; align-items: center;
         }
@@ -317,13 +331,13 @@
         /* FICHA INFERIOR */
         #panelInferior {
             position: fixed; bottom: 0; left: 50%; transform: translate(-50%, 110%);
-            width: 100%; max-width: 580px;
+            width: 100%; max-width: 560px;
             background: rgba(12, 17, 28, 0.94);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid var(--glass-border);
             border-radius: 26px 26px 0 0; padding: 22px 24px 30px;
             z-index: 400; box-shadow: 0 -10px 35px rgba(0, 0, 0, 0.5);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
             max-height: 80vh; overflow-y: auto; color: var(--text-light);
         }
         #panelInferior.visible { transform: translate(-50%, 0%); }
@@ -355,18 +369,47 @@
             font-size: 14px; line-height: 1.6; color: rgba(240, 247, 255, 0.8);
             margin: 8px 0 0 0; white-space: pre-line;
         }
+        .ficha-links {
+            display: flex; flex-direction: column; gap: 10px; margin-top: 16px;
+        }
+        .btn-ficha-link {
+            width: 100%; text-align: center; padding: 12px;
+            background: rgba(255, 42, 117, 0.14); color: #ffffff;
+            border: 1px solid rgba(255, 42, 117, 0.45); border-radius: 14px;
+            text-decoration: none; font-size: 12.5px; font-weight: 600;
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        }
         #botonMapa {
-            display: none; margin-top: 14px; width: 100%; text-align: center;
-            padding: 12px; background: rgba(0, 243, 255, 0.14); color: var(--neon-cyan);
-            border: 1px solid var(--glass-border); border-radius: 14px;
-            text-decoration: none; font-size: 12px; font-weight: 700;
+            display: none; background: rgba(0, 243, 255, 0.14);
+            color: var(--neon-cyan); border-color: var(--glass-border);
         }
     </style>
 
     <!-- ===================================================== -->
-    <!-- 3. MOTOR AR: COMPOSITOR + MATERIAL TRANSLÚCIDO        -->
+    <!-- 3. MOTOR AR OPTIMIZADO (CACHÉ + SHADERS + FLUIDEZ)    -->
     <!-- ===================================================== -->
     <script>
+        // Helper de Caché para ahorrar datos móviles en visitas repetidas
+        async function obtenerUrlConCache(url) {
+            if (!('caches' in window)) return url;
+            try {
+                const cache = await caches.open('torimask-ar-cache-v1');
+                let response = await cache.match(url);
+                if (!response) {
+                    response = await fetch(url, { cache: 'force-cache' });
+                    if (response && response.ok) {
+                        cache.put(url, response.clone());
+                    } else {
+                        return url;
+                    }
+                }
+                const blob = await response.blob();
+                return URL.createObjectURL(blob);
+            } catch (e) {
+                return url;
+            }
+        }
+
         function calcularResolucionCaptura(vw, vh, modo) {
             const minSide = Math.min(vw, vh);
             const escalaBase = (modo === 'video' ? 1080 : 1440) / minSide;
@@ -391,7 +434,7 @@
         };
 
         // ============================================================
-        // COMPOSITOR: une cámara + 3D para fotos y videos
+        // COMPOSITOR: une cámara + 3D solo cuando se toma foto o video
         // ============================================================
         AFRAME.registerComponent('compositor-ar', {
             init: function () {
@@ -404,8 +447,8 @@
                 this._lastDrawTime = 0;
                 this._rects = null;
 
-                window.addEventListener('resize', () => { this._rects = null; });
-                window.addEventListener('orientationchange', () => { this._rects = null; });
+                window.addEventListener('resize', () => { this._rects = null; }, { passive: true });
+                window.addEventListener('orientationchange', () => { this._rects = null; }, { passive: true });
             },
 
             invalidarRects: function () { this._rects = null; },
@@ -495,14 +538,14 @@
                         if (blob && window.mostrarVistaPreviaArchivo) {
                             window.mostrarVistaPreviaArchivo(blob, 'foto');
                         }
-                    }, 'image/jpeg', window.ficha.calidadFotoJPEG || 0.94);
+                    }, 'image/jpeg', window.ficha.calidadFotoJPEG || 0.92);
                 }
             }
         });
 
         // ============================================================
-        // MODELO 3D: TRIBAL TRANSLÚCIDO EN ESFERA + MATERIALIZACIÓN
-        // + RETENCIÓN ANTI-PÉRDIDA
+        // MODELO 3D: TRIBAL NEGRO METALIZADO + COLORES ORIGINALES INTACTOS
+        // + FLUIDEZ SIN RECOMPILACIÓN DE SHADERS
         // ============================================================
         AFRAME.registerComponent('modelo-cyberpunk-ar', {
             init: function () {
@@ -512,7 +555,7 @@
                 this.giroRespaldo = false;
                 this.contenedor = null;
                 this.anilloEscaner = null;
-                this.mallasOriginales = [];
+                this.materialesAnimables = [];
 
                 this.estado = 'OCULTO';
                 this.progresoMat = 0;
@@ -520,6 +563,7 @@
                 this.tiempoPerdidaInicio = 0;
                 this.poseInicializada = false;
                 this.relojPulso = 0;
+                this.smoothDelta = 1 / 60;
 
                 this.minYLocal = -1.8;
                 this.maxYLocal = 1.8;
@@ -529,7 +573,8 @@
                 this._tScale = new THREE.Vector3();
                 this._planeNormal = new THREE.Vector3();
                 this._planePoint = new THREE.Vector3();
-                this.planoCorte = new THREE.Plane(new THREE.Vector3(0, -1, 0), 10);
+                // Plano de corte persistente (constant = 1000 cuando está activo para no recompilar shaders)
+                this.planoCorte = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
 
                 const el = this.el;
                 const anclaEstable = document.getElementById('anclaEstableAR');
@@ -541,31 +586,31 @@
                 this.targetObj = targetEl.object3D;
                 this.anclaObj.visible = false;
 
-                const activarClipping = () => {
+                const configurarRenderer = () => {
                     if (el.sceneEl && el.sceneEl.renderer) {
                         el.sceneEl.renderer.localClippingEnabled = true;
-                        el.sceneEl.renderer.sortObjects = true;
+                        el.sceneEl.renderer.shadowMap.enabled = false;
                     }
                 };
-                if (el.sceneEl.hasLoaded) activarClipping();
-                else el.sceneEl.addEventListener('loaded', activarClipping);
+                if (el.sceneEl.hasLoaded) configurarRenderer();
+                else el.sceneEl.addEventListener('loaded', configurarRenderer);
 
-                // Anillo orgánico de materialización 3D
+                // Anillo ligero de materialización (geometría de 32 segmentos para máximo rendimiento)
                 const crearAnilloEscaner = (radio) => {
                     const group = new THREE.Group();
 
-                    const geoRing = new THREE.RingGeometry(radio * 0.78, radio * 1.0, 48);
+                    const geoRing = new THREE.RingGeometry(radio * 0.8, radio * 0.98, 32);
                     geoRing.rotateX(-Math.PI / 2);
                     const matRing = new THREE.MeshBasicMaterial({
                         color: 0x00f3ff,
                         side: THREE.DoubleSide,
                         transparent: true,
-                        opacity: 0.75,
+                        opacity: 0.8,
                         blending: THREE.AdditiveBlending,
                         depthWrite: false
                     });
 
-                    const geoGlow = new THREE.RingGeometry(radio * 0.35, radio * 0.78, 48);
+                    const geoGlow = new THREE.RingGeometry(radio * 0.45, radio * 0.8, 32);
                     geoGlow.rotateX(-Math.PI / 2);
                     const matGlow = new THREE.MeshBasicMaterial({
                         color: 0xff2a75,
@@ -582,24 +627,39 @@
                     return group;
                 };
 
-                const cargarGLB = () => {
+                // Detecta si una malla/material corresponde al tribal interior para darle negro metalizado
+                // sin alterar los materiales/texturas originales de la máscara o esfera
+                const esMallaTribal = (node, mat, totalMallas) => {
+                    const etiqueta = ((node.name || "") + " " + (node.parent?.name || "") + " " + (mat.name || "")).toLowerCase();
+                    if (/tribal|sigil|symbol|curve|logo| tatu|demon|inner|vector|path/i.test(etiqueta)) {
+                        return true;
+                    }
+                    if (/sphere|esfera|mask|mascara|face|cara|head|glass|orb/i.test(etiqueta)) {
+                        return false;
+                    }
+                    // Si no tiene mapa de textura de color y su color base es oscuro/negro
+                    if (!mat.map && mat.color) {
+                        const luma = 0.299 * mat.color.r + 0.587 * mat.color.g + 0.114 * mat.color.b;
+                        if (luma < 0.22 && totalMallas > 1) return true;
+                    }
+                    return false;
+                };
+
+                const cargarGLB = async () => {
                     const loader = new THREE.GLTFLoader();
 
                     const meshopt = (typeof MeshoptDecoder !== 'undefined') ? MeshoptDecoder : window.MeshoptDecoder;
                     if (meshopt) loader.setMeshoptDecoder(meshopt);
 
-                    if (THREE.DRACOLoader) {
-                        const dracoLoader = new THREE.DRACOLoader();
-                        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
-                        loader.setDRACOLoader(dracoLoader);
-                    }
+                    // Obtener URL desde caché local para ahorrar datos móviles
+                    const modelUrl = await obtenerUrlConCache(window.ficha.modelo);
 
                     loader.load(
-                        window.ficha.modelo,
+                        modelUrl,
                         (gltf) => {
                             const model = gltf.scene;
 
-                            // 1. Inicializar animaciones en loop
+                            // 1. Inicializar animaciones en loop infinito
                             if (gltf.animations && gltf.animations.length > 0) {
                                 this.mixer = new THREE.AnimationMixer(model);
                                 gltf.animations.forEach((clip) => {
@@ -613,91 +673,52 @@
                                 this.giroRespaldo = true;
                             }
 
-                            // 2. Medir cada malla para identificar la esfera exterior y el tribal interior
+                            // 2. Contar mallas y calcular Bounding Box
                             model.updateMatrixWorld(true);
                             const boxGlobal = new THREE.Box3();
-                            const infoMallas = [];
+                            const listaNodos = [];
 
                             model.traverse((node) => {
                                 if (node.isMesh) {
                                     node.frustumCulled = false;
-                                    const mBox = new THREE.Box3().setFromObject(node);
-                                    boxGlobal.union(mBox);
-                                    const mSize = mBox.getSize(new THREE.Vector3());
-                                    const volumen = mSize.x * mSize.y * mSize.z;
-                                    infoMallas.push({ node, volumen, mSize });
+                                    boxGlobal.expandByObject(node);
+                                    listaNodos.push(node);
                                 }
                             });
 
                             if (boxGlobal.isEmpty()) boxGlobal.setFromObject(model);
 
-                            // Ordenar de menor a mayor volumen (el tribal interno suele tener menor volumen o nombre específico)
-                            infoMallas.sort((a, b) => a.volumen - b.volumen);
-                            const maxVolumen = infoMallas.length > 0 ? infoMallas[infoMallas.length - 1].volumen : 1;
+                            // 3. Configurar materiales respetando el 100% de los colores originales del modelo
+                            // y aplicando negro metalizado únicamente al tribal
+                            const materialesVistos = new Set();
 
-                            infoMallas.forEach((item, index) => {
-                                const node = item.node;
-                                const nombre = ((node.name || "") + " " + (node.parent?.name || "")).toLowerCase();
-
-                                // Determinar si es el tribal/máscara interior o la esfera envolvente
-                                const esEsferaExplicita = /sphere|esfera|ball|orb|glass|outer/i.test(nombre);
-                                const esTribalExplicito = /tribal|mask|mascara|tori|demon|sigil|curve|logo|inner/i.test(nombre);
-
-                                let esTribalInterior = true;
-                                if (infoMallas.length > 1) {
-                                    if (esTribalExplicito) {
-                                        esTribalInterior = true;
-                                    } else if (esEsferaExplicita) {
-                                        esTribalInterior = false;
-                                    } else {
-                                        // Si no tienen nombres descriptivos, las mallas internas tienen menor volumen que la esfera exterior
-                                        esTribalInterior = item.volumen < maxVolumen * 0.88 || index < infoMallas.length - 1;
-                                    }
-                                }
-
-                                // Clonar materiales para no afectar instancias compartidas y aplicar translucidez
+                            listaNodos.forEach((node) => {
                                 const origMats = Array.isArray(node.material) ? node.material : [node.material];
-                                const nuevosMats = origMats.map((mat) => {
-                                    if (!mat) return mat;
-                                    const m = mat.clone();
-                                    m.side = THREE.DoubleSide;
-                                    m.transparent = true;
-                                    m.clippingPlanes = [this.planoCorte];
-                                    m.clipShadows = true;
+                                origMats.forEach((mat) => {
+                                    if (!mat || materialesVistos.has(mat)) return;
+                                    materialesVistos.add(mat);
 
-                                    if (esTribalInterior) {
-                                        // Material translúcido etéreo para el tribal dentro de la esfera
-                                        m.opacity = window.ficha.opacidadTribal ?? 0.62;
-                                        m.depthWrite = false;
-                                        if ('roughness' in m) m.roughness = Math.min(m.roughness ?? 0.2, 0.22);
-                                        if ('metalness' in m) m.metalness = Math.max(m.metalness ?? 0.15, 0.25);
-                                        if ('transmission' in m) m.transmission = Math.max(m.transmission ?? 0, 0.45);
-                                        if (m.emissive) {
-                                            if (m.emissive.r === 0 && m.emissive.g === 0 && m.emissive.b === 0) {
-                                                m.emissive.setHex(0x0a2e36);
-                                            }
-                                            m.emissiveIntensity = 0.85;
-                                        }
-                                    } else {
-                                        // Si hay esfera exterior, asegurar que no bloquee el Z-buffer del tribal interior
-                                        m.opacity = Math.min(m.opacity ?? 1.0, window.ficha.opacidadEsfera ?? 0.38);
-                                        m.depthWrite = false;
-                                        if ('roughness' in m) m.roughness = 0.1;
+                                    mat.side = THREE.DoubleSide;
+                                    mat.clippingPlanes = [this.planoCorte];
+
+                                    if (esMallaTribal(node, mat, listaNodos.length)) {
+                                        // Tribal en color negro un poco metalizado
+                                        if (mat.color) mat.color.setHex(window.ficha.tribalColorHex ?? 0x101216);
+                                        if ('metalness' in mat) mat.metalness = window.ficha.tribalMetalness ?? 0.85;
+                                        if ('roughness' in mat) mat.roughness = window.ficha.tribalRoughness ?? 0.22;
+                                        mat.transparent = false;
+                                        mat.opacity = 1.0;
+                                        mat.depthWrite = true;
                                     }
 
-                                    if (m.emissive) {
-                                        m.userData.origEmissive = m.emissive.clone();
-                                        m.userData.origEmissiveIntensity = m.emissiveIntensity ?? 0.85;
+                                    // Guardar los colores/emissive originales exactos para restaurarlos tras la materialización
+                                    if (mat.emissive) {
+                                        mat.userData.origEmissive = mat.emissive.clone();
+                                        mat.userData.origEmissiveIntensity = mat.emissiveIntensity ?? 1.0;
                                     }
-                                    m.userData.baseOpacity = m.opacity;
-                                    m.needsUpdate = true;
-                                    this.mallasOriginales.push(m);
-                                    return m;
+                                    mat.needsUpdate = true;
+                                    this.materialesAnimables.push(mat);
                                 });
-
-                                node.material = Array.isArray(node.material) ? nuevosMats : nuevosMats[0];
-                                // El tribal interior se dibuja primero (renderOrder menor) y la esfera después
-                                node.renderOrder = esTribalInterior ? (10 + index) : (30 + index);
                             });
 
                             const size = boxGlobal.getSize(new THREE.Vector3());
@@ -723,7 +744,6 @@
                             this.maxYLocal = escalaObjetivo * 0.58;
 
                             this.anilloEscaner = crearAnilloEscaner(escalaObjetivo * 0.52);
-                            this.anilloEscaner.renderOrder = 50;
                             el.object3D.add(this.anilloEscaner);
 
                             el.setObject3D('mesh', pivotGroup);
@@ -760,7 +780,7 @@
                     if (this.estado === 'OCULTO' || this.estado === 'DESMATERIALIZANDO') {
                         if (this.estado === 'OCULTO') this.progresoMat = 0.0;
                         this.estado = 'MATERIALIZANDO';
-                        this.aplicarClippingActivo(true);
+                        if (this.anilloEscaner) this.anilloEscaner.visible = true;
                     } else if (this.estado === 'RETENCION') {
                         this.estado = this.progresoMat < 1.0 ? 'MATERIALIZANDO' : 'ACTIVO';
                     }
@@ -784,44 +804,40 @@
                         if (estadoUI) estadoUI.textContent = "Estabilizando...";
                     }
                 });
-
-                this._statusPill = statusPill;
-                this._estadoUI = estadoUI;
             },
 
-            aplicarClippingActivo: function (activo) {
-                for (let i = 0; i < this.mallasOriginales.length; i++) {
-                    const mat = this.mallasOriginales[i];
-                    mat.clippingPlanes = activo ? [this.planoCorte] : null;
-                    if (!activo && mat.emissive && mat.userData.origEmissive) {
+            restaurarColoresOriginales: function () {
+                // Oculta el anillo y desactiva el recorte sin recompilar shaders
+                if (this.anilloEscaner) this.anilloEscaner.visible = false;
+                this.planoCorte.constant = 1000;
+
+                for (let i = 0; i < this.materialesAnimables.length; i++) {
+                    const mat = this.materialesAnimables[i];
+                    if (mat.emissive && mat.userData.origEmissive) {
                         mat.emissive.copy(mat.userData.origEmissive);
                         mat.emissiveIntensity = mat.userData.origEmissiveIntensity;
                     }
-                    mat.needsUpdate = true;
-                }
-                if (this.anilloEscaner) {
-                    this.anilloEscaner.visible = activo;
                 }
             },
 
             actualizarEfectoMaterializacion: function (delta) {
                 const THREE = AFRAME.THREE;
                 if (this.estado === 'MATERIALIZANDO') {
-                    const dur = (window.ficha.duracionMaterializacionMs || 1700) / 1000;
+                    const dur = (window.ficha.duracionMaterializacionMs || 1500) / 1000;
                     this.progresoMat = Math.min(1.0, this.progresoMat + delta / dur);
                     if (this.progresoMat >= 1.0) {
                         this.estado = 'ACTIVO';
-                        this.aplicarClippingActivo(false);
+                        this.restaurarColoresOriginales();
                         return;
                     }
                 } else if (this.estado === 'DESMATERIALIZANDO') {
-                    const dur = (window.ficha.duracionDesmaterializacionMs || 550) / 1000;
+                    const dur = (window.ficha.duracionDesmaterializacionMs || 500) / 1000;
                     this.progresoMat = Math.max(0.0, this.progresoMat - delta / dur);
                     if (this.progresoMat <= 0.0) {
                         this.estado = 'OCULTO';
                         this.anclaObj.visible = false;
                         this.poseInicializada = false;
-                        this.aplicarClippingActivo(false);
+                        this.restaurarColoresOriginales();
                         if (window.notificarPerdidaDefinitivaUI) window.notificarPerdidaDefinitivaUI();
                         return;
                     }
@@ -836,7 +852,7 @@
                 if (this.anilloEscaner) {
                     this.anilloEscaner.visible = true;
                     this.anilloEscaner.position.set(0, alturaLocal, 0);
-                    this.anilloEscaner.rotation.y += delta * 3.5;
+                    this.anilloEscaner.rotation.y += delta * 3.2;
 
                     this.el.object3D.updateMatrixWorld(true);
                     this.anilloEscaner.getWorldPosition(this._planePoint);
@@ -845,16 +861,19 @@
                     this.planoCorte.setFromNormalAndCoplanarPoint(this._planeNormal, this._planePoint);
                 }
 
-                const pulsoNeon = Math.sin(t * Math.PI);
-                for (let i = 0; i < this.mallasOriginales.length; i++) {
-                    const mat = this.mallasOriginales[i];
-                    if (mat.emissive) {
+                // Brillo sutil durante el escaneo que se desvanece a 0 al llegar a t=1.0
+                // dejando los colores originales del modelo intactos
+                const pulso = Math.sin(t * Math.PI) * 0.45;
+                for (let i = 0; i < this.materialesAnimables.length; i++) {
+                    const mat = this.materialesAnimables[i];
+                    if (mat.emissive && mat.userData.origEmissive) {
+                        const orig = mat.userData.origEmissive;
                         mat.emissive.setRGB(
-                            0.05 + pulsoNeon * 0.12,
-                            pulsoNeon * 0.78,
-                            pulsoNeon * 0.92
+                            orig.r + pulso * 0.05,
+                            orig.g + pulso * 0.65,
+                            orig.b + pulso * 0.85
                         );
-                        mat.emissiveIntensity = 0.85 + pulsoNeon * 1.4;
+                        mat.emissiveIntensity = mat.userData.origEmissiveIntensity + pulso;
                     }
                 }
             },
@@ -862,7 +881,10 @@
             tick: function (time, timeDelta) {
                 if (this.estado === 'OCULTO') return;
 
-                const delta = Math.min((timeDelta || 16.6) / 1000, 0.05);
+                // Suavizado de delta time para evitar saltos en la animación 3D
+                const rawDelta = Math.min(Math.max((timeDelta || 16.6) * 0.001, 0.001), 0.04);
+                this.smoothDelta += (rawDelta - this.smoothDelta) * 0.25;
+                const delta = this.smoothDelta;
                 this.relojPulso += delta;
 
                 if (this.rastreandoEnVivo && this.targetObj.visible) {
@@ -876,7 +898,7 @@
                                 this.anclaObj.scale.copy(this._tScale);
                                 this.poseInicializada = true;
                             } else {
-                                const k = window.ficha.suavizadoPose || 16.0;
+                                const k = window.ficha.suavizadoPose || 18.0;
                                 const alpha = 1.0 - Math.exp(-k * delta);
                                 this.anclaObj.position.lerp(this._tPos, alpha);
                                 this.anclaObj.quaternion.slerp(this._tQuat, alpha);
@@ -888,11 +910,11 @@
                     const transcurrido = performance.now() - this.tiempoPerdidaInicio;
                     const maxRetencion = window.ficha.tiempoRetencionPerdidaMs || 4500;
 
-                    this.anclaObj.position.y += Math.sin(this.relojPulso * 3.2) * 0.00035;
+                    this.anclaObj.position.y += Math.sin(this.relojPulso * 3.0) * 0.0003;
 
                     if (transcurrido >= maxRetencion) {
                         this.estado = 'DESMATERIALIZANDO';
-                        this.aplicarClippingActivo(true);
+                        if (this.anilloEscaner) this.anilloEscaner.visible = true;
                     }
                 }
 
@@ -914,13 +936,24 @@
 
     <div id="flashPantalla"></div>
 
-    <!-- BARRA SUPERIOR MINIMALISTA -->
+    <!-- BARRA SUPERIOR CON BOTÓN DE INSTAGRAM E INFO -->
     <div class="top-bar">
         <div class="status-pill" id="statusPill">
             <span class="status-dot"></span>
             <span id="estadoCarga">Iniciando...</span>
         </div>
-        <button id="btnAbrirFicha" aria-label="Información de la pieza">i</button>
+
+        <div class="top-actions">
+            <a id="btnInstagramTop" class="btn-ig-top" href="https://www.instagram.com/asteroidae9999/?hl=en" target="_blank" rel="noopener noreferrer" aria-label="Instagram @asteroidae9999">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+                <span>@asteroidae9999</span>
+            </a>
+            <button id="btnAbrirFicha" aria-label="Información de la pieza">i</button>
+        </div>
     </div>
 
     <!-- GUÍA DE ESCANEO ORGÁNICA SIN TEXTO -->
@@ -998,31 +1031,42 @@
             <div style="grid-column: span 2;">
                 <span class="etiqueta">UBICACIÓN</span>
                 <div class="valor" id="uiUbicacion"></div>
-                <a id="botonMapa" href="#" target="_blank" rel="noopener noreferrer">VER UBICACIÓN EN GOOGLE MAPS</a>
             </div>
         </div>
         <span class="etiqueta">DESCRIPCIÓN</span>
         <p class="historia-texto" id="uiHistoria"></p>
+
+        <div class="ficha-links">
+            <a id="botonInstagramFicha" class="btn-ficha-link" href="https://www.instagram.com/asteroidae9999/?hl=en" target="_blank" rel="noopener noreferrer">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+                <span>Seguir en Instagram · @asteroidae9999</span>
+            </a>
+            <a id="botonMapa" class="btn-ficha-link" href="#" target="_blank" rel="noopener noreferrer">VER UBICACIÓN EN GOOGLE MAPS</a>
+        </div>
     </section>
 
     <!-- ===================================================== -->
-    <!-- ESCENA AR                                             -->
+    <!-- ESCENA AR (ILUMINACIÓN NEUTRA FIEL AL MODELO ORIGINAL)-->
     <!-- ===================================================== -->
     <a-scene
         id="escenaAR"
         compositor-ar
         loading-screen="enabled: false"
-        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.0005; filterBeta: 0.005; warmupTolerance: 1; missTolerance: 15;"
+        mindar-image="imageTargetSrc: ./targets/imagen_rastreo.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no; filterMinCF: 0.001; filterBeta: 0.008; warmupTolerance: 1; missTolerance: 12;"
         color-space="sRGB"
         renderer="colorManagement: true; antialias: true; alpha: true; preserveDrawingBuffer: true; powerPreference: high-performance;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
 
-        <a-light type="hemisphere" color="#e8faff" groundColor="#241634" intensity="1.05"></a-light>
+        <!-- Iluminación balanceada para respetar los colores reales del modelo y dar reflejo al negro metálico -->
+        <a-light type="hemisphere" color="#ffffff" groundColor="#4a4a52" intensity="1.0"></a-light>
         <a-light type="ambient" color="#ffffff" intensity="1.1"></a-light>
         <a-light type="directional" color="#ffffff" intensity="2.0" position="1.5 2.5 2"></a-light>
-        <a-light type="directional" color="#00f3ff" intensity="1.1" position="-2.0 1.2 1.5"></a-light>
-        <a-light type="directional" color="#ff2a75" intensity="0.9" position="2.0 -1.2 1.2"></a-light>
+        <a-light type="directional" color="#e0f2fe" intensity="0.9" position="-1.5 -1 1.2"></a-light>
 
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
@@ -1046,13 +1090,23 @@
         document.addEventListener("DOMContentLoaded", () => {
             const escenaEl = document.getElementById("escenaAR");
 
-            // 1. Cargar datos de la ficha
+            // Precargar en caché local el marcador .mind para visitas subsecuentes sin gastar datos
+            if (window.ficha.marcadorMind) {
+                obtenerUrlConCache(window.ficha.marcadorMind);
+            }
+
+            // 1. Cargar datos de la ficha e Instagram
             document.getElementById("uiCategoria").textContent = window.ficha.categoria;
             document.getElementById("uiTitulo").textContent = window.ficha.titulo;
             document.getElementById("uiAutor").textContent = window.ficha.autor;
             document.getElementById("uiAnio").textContent = window.ficha.anio;
             document.getElementById("uiUbicacion").textContent = window.ficha.ubicacion;
             document.getElementById("uiHistoria").textContent = window.ficha.historia;
+
+            if (window.ficha.instagramUrl) {
+                document.getElementById("btnInstagramTop").href = window.ficha.instagramUrl;
+                document.getElementById("botonInstagramFicha").href = window.ficha.instagramUrl;
+            }
 
             const entidadModelo = document.getElementById("entidadModelo");
             if (window.ficha.rotacionInicial) {
@@ -1062,19 +1116,16 @@
             const botonMapa = document.getElementById("botonMapa");
             if (window.ficha.mapa && window.ficha.mapa.trim() !== "") {
                 botonMapa.href = window.ficha.mapa;
-                botonMapa.style.display = "block";
+                botonMapa.style.display = "inline-flex";
             }
 
-            // 2. Ajustar resolución del renderer
+            // 2. Ajustar resolución del renderer para máxima fluidez (60fps)
             function aplicarViewerPixelRatio() {
                 const renderer = escenaEl && escenaEl.renderer;
                 if (!renderer || typeof renderer.setPixelRatio !== 'function') return;
                 const dpr = window.devicePixelRatio || 1;
-                const target = Math.min(dpr, window.ficha.viewerPixelRatioMax || 2.0);
-                const current = (typeof renderer.getPixelRatio === 'function') ? renderer.getPixelRatio() : 1;
-                if (current < target) {
-                    renderer.setPixelRatio(target);
-                }
+                const target = Math.min(dpr, window.ficha.viewerPixelRatioMax || 1.5);
+                renderer.setPixelRatio(target);
             }
 
             if (escenaEl.hasLoaded) {
@@ -1104,11 +1155,11 @@
                 clearTimeout(timeoutOcultarUI);
                 marcoEscaner.classList.add("detectado");
                 btnAbrirFicha.style.display = "flex";
-                if (navigator.vibrate) { try { navigator.vibrate(25); } catch (e) {} }
+                if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} }
 
                 timeoutOcultarUI = setTimeout(() => {
                     uiEscaneo.style.opacity = "0";
-                }, 450);
+                }, 400);
             });
 
             window.notificarPerdidaDefinitivaUI = () => {
@@ -1207,7 +1258,7 @@
                 const renderer = escenaEl.renderer;
                 const originalPR = renderer ? renderer.getPixelRatio() : 1;
                 if (renderer) {
-                    const boost = Math.min((window.devicePixelRatio || 1) * 1.5, 4);
+                    const boost = Math.min((window.devicePixelRatio || 1) * 1.5, 3);
                     renderer.setPixelRatio(Math.max(originalPR, boost));
                 }
 
@@ -1217,7 +1268,7 @@
 
                 setTimeout(() => {
                     if (renderer) renderer.setPixelRatio(originalPR);
-                }, 900);
+                }, 600);
             });
 
             // 7. Grabación de VIDEO HD
@@ -1229,7 +1280,6 @@
             let fragmentosVideo = [];
             let intervaloTiempo = null;
             let segundosGrabados = 0;
-            let originalPRForVideo = null;
 
             function obtenerMimeTypeOptimizado() {
                 const tipos = [
@@ -1247,15 +1297,6 @@
             }
 
             async function iniciarGrabacion() {
-                const renderer = escenaEl.renderer;
-                originalPRForVideo = renderer ? renderer.getPixelRatio() : 1;
-                if (renderer) {
-                    const boost = Math.min((window.devicePixelRatio || 1) * 1.5, 3);
-                    renderer.setPixelRatio(Math.max(originalPRForVideo, boost));
-                }
-
-                await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
                 const compCanvas = window.capturadorAR.canvasCompuesto;
                 const vw = window.innerWidth || 720;
                 const vh = window.innerHeight || 960;
@@ -1277,7 +1318,7 @@
                 const mimeType = obtenerMimeTypeOptimizado();
 
                 const opciones = {
-                    videoBitsPerSecond: window.ficha.bitrateVideo || 15000000
+                    videoBitsPerSecond: window.ficha.bitrateVideo || 12000000
                 };
                 if (mimeType) opciones.mimeType = mimeType;
 
@@ -1322,13 +1363,6 @@
                 clearInterval(intervaloTiempo);
                 btnVideo.classList.remove("grabando");
                 badgeTiempo.classList.remove("activo");
-
-                if (escenaEl.renderer && originalPRForVideo !== null) {
-                    setTimeout(() => {
-                        escenaEl.renderer.setPixelRatio(originalPRForVideo);
-                        originalPRForVideo = null;
-                    }, 400);
-                }
 
                 if (mediaRecorder && mediaRecorder.state !== "inactive") {
                     try { mediaRecorder.requestData(); } catch (e) {}
