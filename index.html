@@ -15,8 +15,9 @@
             modelo: "./models/giro-torimask-opt.glb",
             marcadorMind: "./targets/imagen_rastreo.mind",
             instagramUrl: "https://www.instagram.com/asteroidae9999/?hl=en",
+            titulo: "Guerrero Demonio",
 
-            // Tamaño único fijo: triple de la escala anterior (1.85 x 3 = 5.55)
+            // Tamaño único fijo: triple del tamaño base (1.85 x 3 = 5.55)
             escala: 5.55,
             rotacionInicial: "0 0 0",
 
@@ -43,15 +44,7 @@
 
             // ===== Optimización de Cámara y GPU Móvil =====
             camara: { width: 1280, height: 720 },
-            viewerPixelRatioMax: 1.5,
-
-            categoria: "Stickers RA",
-            titulo: "Guerrero Demonio",
-            autor: "Rawnin del Desierto",
-            anio: "2026",
-            ubicacion: "Mexa Web",
-            mapa: "",
-            historia: "Pieza interactiva en Realidad Aumentada con seguimiento espacial del sticker, exploración táctil en 360° y materialización holográfica."
+            viewerPixelRatioMax: 1.5
         };
 
         window.modoCamaraActual = "environment";
@@ -157,19 +150,19 @@
     <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 
     <!-- ===================================================== -->
-    <!-- 3. ESTILOS UI/UX — CÁMARA Y ESPACIO AR 100% VISIBLES  -->
+    <!-- 3. ESTILOS UI/UX — FUTURISMO MINIMALISTA TRANSLÚCIDO  -->
     <!-- ===================================================== -->
     <style>
         :root {
-            --spatial-bg: rgba(10, 14, 24, 0.58);
-            --spatial-bg-strong: rgba(12, 16, 28, 0.88);
-            --spatial-border: rgba(255, 255, 255, 0.16);
-            --spatial-highlight: rgba(0, 243, 255, 0.42);
+            --glass-surface: rgba(8, 12, 22, 0.34);
+            --glass-surface-strong: rgba(10, 14, 26, 0.84);
+            --glass-border: rgba(255, 255, 255, 0.14);
+            --glass-border-bright: rgba(255, 255, 255, 0.28);
             --accent-cyan: #00f3ff;
             --accent-magenta: #ff2a75;
             --accent-mint: #00f5a0;
-            --text-primary: #f4f8ff;
-            --text-secondary: rgba(244, 248, 255, 0.72);
+            --text-primary: rgba(246, 250, 255, 0.94);
+            --text-secondary: rgba(244, 248, 255, 0.68);
         }
 
         * {
@@ -237,11 +230,11 @@
             inset: 0;
             pointer-events: none;
             z-index: 110;
-            background: radial-gradient(circle at center, transparent 76%, rgba(4, 6, 14, 0.32) 100%);
+            background: radial-gradient(circle at center, transparent 78%, rgba(4, 6, 14, 0.34) 100%);
         }
 
         /* ===================================================== */
-        /* BARRA SUPERIOR SPATIAL GLASS                          */
+        /* BARRA SUPERIOR: SOLO ESTADO AR E INSTAGRAM            */
         /* ===================================================== */
         .top-bar {
             position: fixed;
@@ -252,29 +245,29 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 14px;
-            padding-top: max(12px, env(safe-area-inset-top));
+            padding: 14px 16px;
+            padding-top: max(14px, env(safe-area-inset-top));
             pointer-events: none;
-            gap: 8px;
+            gap: 10px;
         }
 
         .status-pill {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            background: var(--spatial-bg);
-            border: 1px solid var(--spatial-border);
-            padding: 8px 13px;
+            gap: 9px;
+            background: var(--glass-surface);
+            border: 1px solid var(--glass-border);
+            padding: 8px 15px;
             border-radius: 999px;
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-            transition: border-color 0.3s ease;
+            backdrop-filter: blur(18px) saturate(150%);
+            -webkit-backdrop-filter: blur(18px) saturate(150%);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: border-color 0.35s ease, background 0.35s ease;
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
             background: var(--accent-cyan);
             box-shadow: 0 0 10px var(--accent-cyan);
@@ -282,7 +275,7 @@
         }
 
         .status-pill.activo {
-            border-color: rgba(0, 245, 160, 0.45);
+            border-color: rgba(0, 245, 160, 0.42);
         }
         .status-pill.activo .status-dot {
             background: var(--accent-mint);
@@ -290,7 +283,7 @@
         }
 
         .status-pill.retencion {
-            border-color: rgba(255, 42, 117, 0.48);
+            border-color: rgba(255, 42, 117, 0.45);
         }
         .status-pill.retencion .status-dot {
             background: var(--accent-magenta);
@@ -299,70 +292,48 @@
 
         #estadoCarga {
             font-size: 11.5px;
-            font-weight: 600;
-            letter-spacing: 0.2px;
+            font-weight: 500;
+            letter-spacing: 0.35px;
             color: var(--text-primary);
             white-space: nowrap;
         }
 
-        .top-actions {
-            display: flex;
-            align-items: center;
-            gap: 7px;
+        .btn-ig-top {
             pointer-events: auto;
-        }
-
-        .btn-spatial-pill {
             height: 36px;
-            padding: 0 12px;
+            padding: 0 14px;
             border-radius: 999px;
-            background: var(--spatial-bg);
+            background: var(--glass-surface);
             color: var(--text-primary);
-            border: 1px solid var(--spatial-border);
-            backdrop-filter: blur(14px);
-            -webkit-backdrop-filter: blur(14px);
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(18px) saturate(150%);
+            -webkit-backdrop-filter: blur(18px) saturate(150%);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 7px;
             text-decoration: none;
             font-size: 11.5px;
-            font-weight: 600;
+            font-weight: 500;
+            letter-spacing: 0.2px;
             cursor: pointer;
-            transition: transform 0.18s ease, border-color 0.2s ease, background 0.2s ease;
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s ease, background 0.25s ease;
         }
-        .btn-spatial-pill:hover {
-            border-color: var(--spatial-highlight);
-            background: rgba(18, 26, 44, 0.75);
+        .btn-ig-top:hover {
+            border-color: rgba(0, 243, 255, 0.38);
+            background: rgba(14, 22, 38, 0.48);
         }
-        .btn-spatial-pill:active {
-            transform: scale(0.92);
+        .btn-ig-top:active {
+            transform: scale(0.93);
         }
 
         .btn-ig-top svg {
             width: 14px;
             height: 14px;
             stroke: var(--accent-magenta);
+            filter: drop-shadow(0 0 5px rgba(255, 42, 117, 0.4));
             flex-shrink: 0;
-        }
-
-        #btnSimularAR {
-            border-color: rgba(0, 243, 255, 0.38);
-            color: var(--accent-cyan);
-        }
-        #btnSimularAR.activo {
-            background: rgba(0, 245, 160, 0.18);
-            border-color: var(--accent-mint);
-            color: var(--accent-mint);
-        }
-
-        #btnAbrirFicha {
-            display: none;
-            width: 36px;
-            padding: 0;
-            font-weight: 700;
-            font-size: 13px;
         }
 
         #btnPermisoCamara {
@@ -376,17 +347,20 @@
             gap: 10px;
             padding: 14px 24px;
             border-radius: 999px;
-            background: rgba(10, 16, 30, 0.9);
+            background: rgba(10, 16, 30, 0.78);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             color: var(--accent-cyan);
-            border: 1.5px solid var(--accent-cyan);
-            box-shadow: 0 0 28px rgba(0, 243, 255, 0.35);
-            font-size: 14px;
-            font-weight: 700;
+            border: 1px solid rgba(0, 243, 255, 0.5);
+            box-shadow: 0 0 28px rgba(0, 243, 255, 0.25);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.4px;
             cursor: pointer;
         }
 
         /* ===================================================== */
-        /* RETÍCULA DE ESCANEO LIGERA                            */
+        /* RETÍCULA DE ESCANEO MINIMALISTA                       */
         /* ===================================================== */
         #ui-escaneo {
             position: fixed;
@@ -400,14 +374,14 @@
         }
 
         .marco-escaner {
-            width: 62vw;
-            max-width: 240px;
-            height: 62vw;
-            max-height: 240px;
+            width: 60vw;
+            max-width: 230px;
+            height: 60vw;
+            max-height: 230px;
             border-radius: 50%;
             position: relative;
-            border: 1.5px solid rgba(0, 243, 255, 0.38);
-            background: radial-gradient(circle, rgba(0, 243, 255, 0.04) 0%, transparent 70%);
+            border: 1px solid rgba(0, 243, 255, 0.32);
+            background: radial-gradient(circle, rgba(0, 243, 255, 0.03) 0%, transparent 70%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -419,22 +393,22 @@
             position: absolute;
             inset: -8px;
             border-radius: 50%;
-            border: 1px dashed rgba(255, 255, 255, 0.2);
-            animation: giroOrbita 18s linear infinite;
+            border: 1px dashed rgba(255, 255, 255, 0.16);
+            animation: giroOrbita 20s linear infinite;
         }
 
         .marco-escaner.detectado {
-            border-color: rgba(0, 245, 160, 0.85);
+            border-color: rgba(0, 245, 160, 0.8);
             transform: scale(1.06);
         }
 
         .linea-escaner {
-            width: 72%;
-            height: 2px;
+            width: 70%;
+            height: 1.5px;
             border-radius: 999px;
             background: linear-gradient(90deg, transparent, var(--accent-cyan), var(--accent-magenta), transparent);
-            box-shadow: 0 0 12px var(--accent-cyan);
-            animation: pulsoOrganico 2.2s infinite ease-in-out;
+            box-shadow: 0 0 10px var(--accent-cyan);
+            animation: pulsoOrganico 2.4s infinite ease-in-out;
             transition: opacity 0.25s ease;
         }
         .marco-escaner.detectado .linea-escaner {
@@ -443,8 +417,8 @@
         }
 
         @keyframes pulsoOrganico {
-            0%, 100% { transform: translateY(-60px) scaleX(0.72); opacity: 0.25; }
-            50% { transform: translateY(60px) scaleX(0.96); opacity: 0.92; }
+            0%, 100% { transform: translateY(-56px) scaleX(0.7); opacity: 0.2; }
+            50% { transform: translateY(56px) scaleX(0.95); opacity: 0.85; }
         }
         @keyframes giroOrbita {
             from { transform: rotate(0deg); }
@@ -456,19 +430,20 @@
         /* ===================================================== */
         #hintExploracion {
             position: fixed;
-            bottom: max(108px, calc(94px + env(safe-area-inset-bottom)));
+            bottom: max(112px, calc(98px + env(safe-area-inset-bottom)));
             left: 50%;
             transform: translateX(-50%) translateY(8px);
             z-index: 260;
             pointer-events: none;
-            background: var(--spatial-bg);
-            border: 1px solid var(--spatial-border);
-            padding: 7px 15px;
+            background: var(--glass-surface);
+            border: 1px solid var(--glass-border);
+            padding: 6px 15px;
             border-radius: 999px;
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             font-size: 11px;
-            font-weight: 500;
+            font-weight: 400;
+            letter-spacing: 0.3px;
             color: var(--text-secondary);
             white-space: nowrap;
             opacity: 0;
@@ -480,12 +455,12 @@
         }
 
         /* ===================================================== */
-        /* DOCK DE CAPTURA SPATIAL GLASS (FOTO Y VIDEO)          */
+        /* DOCK DE CAPTURA FUTURISTA SEMITRANSPARENTE (ABSTRACT) */
         /* ===================================================== */
         .contenedor-controles {
             position: fixed;
-            bottom: 22px;
-            bottom: max(22px, env(safe-area-inset-bottom));
+            bottom: 24px;
+            bottom: max(24px, env(safe-area-inset-bottom));
             left: 50%;
             transform: translateX(-50%);
             z-index: 280;
@@ -498,13 +473,15 @@
         #badgeTiempo {
             display: none;
             align-items: center;
-            gap: 7px;
-            background: rgba(20, 8, 18, 0.84);
-            color: #ffffff;
-            border: 1px solid rgba(255, 42, 117, 0.55);
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.8px;
+            gap: 8px;
+            background: rgba(14, 10, 20, 0.52);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 42, 117, 0.42);
+            font-size: 11.5px;
+            font-weight: 500;
+            letter-spacing: 1.2px;
             padding: 5px 14px;
             border-radius: 999px;
         }
@@ -513,8 +490,8 @@
         }
 
         .punto-parpadeo {
-            width: 7px;
-            height: 7px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             background: var(--accent-magenta);
             box-shadow: 0 0 8px var(--accent-magenta);
@@ -528,91 +505,120 @@
         .dock-captura {
             display: flex;
             align-items: center;
-            gap: 24px;
-            background: var(--spatial-bg);
-            border: 1px solid var(--spatial-border);
-            padding: 10px 26px;
+            gap: 22px;
+            background: rgba(8, 12, 22, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.13);
+            padding: 9px 22px;
             border-radius: 999px;
-            backdrop-filter: blur(18px);
-            -webkit-backdrop-filter: blur(18px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(22px) saturate(160%);
+            -webkit-backdrop-filter: blur(22px) saturate(160%);
+            box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.12);
         }
 
         .dock-divider {
             width: 1px;
-            height: 28px;
-            background: rgba(255, 255, 255, 0.14);
+            height: 24px;
+            background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.18), transparent);
         }
 
-        .btn-captura-wrap {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .btn-icono {
+        .btn-abstract {
             position: relative;
-            border: none;
-            background: none;
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
             padding: 0;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             touch-action: manipulation;
-            transition: transform 0.18s ease;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
         }
-        .btn-icono:active {
+        .btn-abstract:active {
             transform: scale(0.88);
         }
 
+        /* Botón Abstracto de Fotografía: Cristal Cian Translúcido + Retícula Geométrica */
         #btnFoto {
-            width: 54px;
-            height: 54px;
-            border-radius: 50%;
-            border: 2px solid rgba(0, 243, 255, 0.82);
-            background: rgba(0, 243, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(0, 243, 255, 0.38);
+            color: rgba(244, 248, 255, 0.92);
+            box-shadow: 0 0 20px rgba(0, 243, 255, 0.1), inset 0 0 12px rgba(0, 243, 255, 0.06);
         }
-        .nucleo-foto {
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ffffff 0%, #c4faff 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #07101e;
+        #btnFoto:hover {
+            background: rgba(0, 243, 255, 0.1);
+            border-color: rgba(0, 243, 255, 0.68);
+            box-shadow: 0 0 24px rgba(0, 243, 255, 0.22), inset 0 0 14px rgba(0, 243, 255, 0.12);
+        }
+        #btnFoto svg {
+            width: 26px;
+            height: 26px;
+            overflow: visible;
+            filter: drop-shadow(0 0 6px rgba(0, 243, 255, 0.35));
+            transition: transform 0.3s ease;
+        }
+        #btnFoto:active svg {
+            transform: rotate(45deg) scale(0.92);
         }
 
+        /* Botón Abstracto de Video: Cristal Magenta Translúcido + Pulso Orbital */
         #btnVideo {
-            width: 54px;
-            height: 54px;
-            border-radius: 50%;
-            border: 2px solid rgba(255, 42, 117, 0.82);
+            background: rgba(255, 42, 117, 0.06);
+            border: 1px solid rgba(255, 42, 117, 0.38);
+            color: rgba(244, 248, 255, 0.92);
+            box-shadow: 0 0 20px rgba(255, 42, 117, 0.1), inset 0 0 12px rgba(255, 42, 117, 0.06);
+        }
+        #btnVideo:hover {
             background: rgba(255, 42, 117, 0.12);
+            border-color: rgba(255, 42, 117, 0.68);
+            box-shadow: 0 0 24px rgba(255, 42, 117, 0.22), inset 0 0 14px rgba(255, 42, 117, 0.12);
         }
-        .nucleo-video {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ff2a75 0%, #ff639b 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #ffffff;
-            transition: all 0.22s ease;
+        #btnVideo svg {
+            width: 26px;
+            height: 26px;
+            overflow: visible;
+            filter: drop-shadow(0 0 6px rgba(255, 42, 117, 0.4));
         }
-        #btnVideo.grabando {
-            border-color: var(--accent-cyan);
+
+        #btnVideo .nucleo-orbital {
+            fill: rgba(255, 42, 117, 0.85);
+            transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: center;
         }
-        #btnVideo.grabando .nucleo-video {
-            width: 22px;
-            height: 22px;
-            border-radius: 6px;
-        }
-        #btnVideo.grabando .nucleo-video svg {
+        #btnVideo .stop-glyph {
             opacity: 0;
+            transform: scale(0.4);
+            transform-origin: center;
+            fill: var(--accent-cyan);
+            transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #btnVideo .anillo-pulso {
+            transform-origin: center;
+            transition: stroke 0.3s ease;
+        }
+
+        /* Estado Grabando */
+        #btnVideo.grabando {
+            background: rgba(0, 243, 255, 0.09);
+            border-color: rgba(0, 243, 255, 0.72);
+            box-shadow: 0 0 26px rgba(0, 243, 255, 0.28), inset 0 0 14px rgba(0, 243, 255, 0.14);
+        }
+        #btnVideo.grabando svg {
+            filter: drop-shadow(0 0 8px rgba(0, 243, 255, 0.5));
+        }
+        #btnVideo.grabando .anillo-pulso {
+            stroke: var(--accent-cyan);
+            animation: giroOrbita 6s linear infinite;
+        }
+        #btnVideo.grabando .nucleo-orbital {
+            opacity: 0;
+            transform: scale(0.2);
+        }
+        #btnVideo.grabando .stop-glyph {
+            opacity: 1;
+            transform: scale(1);
         }
 
         #flashPantalla {
@@ -631,9 +637,9 @@
         #modalPreview {
             position: fixed;
             inset: 0;
-            background: rgba(4, 7, 15, 0.84);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: rgba(4, 7, 15, 0.82);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
             z-index: 600;
             display: none;
             flex-direction: column;
@@ -646,8 +652,8 @@
         }
 
         .tarjeta-preview {
-            background: var(--spatial-bg-strong);
-            border: 1px solid var(--spatial-border);
+            background: var(--glass-surface-strong);
+            border: 1px solid var(--glass-border);
             border-radius: 24px;
             padding: 18px;
             width: 100%;
@@ -662,17 +668,18 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
-            font-size: 13.5px;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
         }
 
         #pesoArchivo {
-            background: rgba(0, 243, 255, 0.12);
+            background: rgba(0, 243, 255, 0.1);
             color: var(--accent-cyan);
-            border: 1px solid rgba(0, 243, 255, 0.28);
+            border: 1px solid rgba(0, 243, 255, 0.25);
             padding: 4px 10px;
             border-radius: 999px;
-            font-weight: 600;
+            font-weight: 500;
             font-size: 11px;
         }
 
@@ -701,10 +708,11 @@
         .btn-modal {
             flex: 1;
             padding: 12px 10px;
-            border: none;
+            border: 1px solid var(--glass-border);
             border-radius: 14px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 12.5px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -713,136 +721,20 @@
             touch-action: manipulation;
         }
         #btnCerrarPreview {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.08);
             color: #ffffff;
-            flex: 0.55;
+            flex: 0.5;
         }
         #btnCompartir {
             display: none;
-            background: var(--accent-mint);
-            color: #061018;
+            background: rgba(0, 245, 160, 0.18);
+            border-color: rgba(0, 245, 160, 0.45);
+            color: var(--accent-mint);
         }
         #btnDescargar {
-            background: var(--accent-cyan);
-            color: #061018;
-        }
-
-        /* ===================================================== */
-        /* PANEL INFERIOR DE INFORMACIÓN                         */
-        /* ===================================================== */
-        #panelInferior {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translate(-50%, 110%);
-            width: 100%;
-            max-width: 560px;
-            background: var(--spatial-bg-strong);
-            backdrop-filter: blur(22px);
-            -webkit-backdrop-filter: blur(22px);
-            border-top: 1px solid var(--spatial-border);
-            border-radius: 26px 26px 0 0;
-            padding: 22px 24px 30px;
-            z-index: 400;
-            box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
-            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-            max-height: 80vh;
-            overflow-y: auto;
-            color: var(--text-primary);
-        }
-        #panelInferior.visible {
-            transform: translate(-50%, 0%);
-        }
-        .cabecera-ficha {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-        .badge-categoria {
-            display: inline-block;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1.2px;
-            color: #061018;
-            background-color: var(--accent-cyan);
-            padding: 4px 10px;
-            border-radius: 999px;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-        }
-        .titulo-obra {
-            margin: 0;
-            font-size: 22px;
-            font-weight: 700;
-            color: #ffffff;
-        }
-        .boton-cerrar-ficha {
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
-            border: none;
-            border-radius: 999px;
-            padding: 8px 14px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .datos-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-            padding-top: 14px;
-            border-top: 1px solid rgba(255, 255, 255, 0.12);
-            margin-bottom: 14px;
-        }
-        .etiqueta {
-            display: block;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1.2px;
+            background: rgba(0, 243, 255, 0.16);
+            border-color: rgba(0, 243, 255, 0.45);
             color: var(--accent-cyan);
-            margin-bottom: 4px;
-        }
-        .valor {
-            font-size: 14px;
-            color: var(--text-primary);
-            font-weight: 600;
-        }
-        .historia-texto {
-            font-size: 14px;
-            line-height: 1.6;
-            color: var(--text-secondary);
-            margin: 8px 0 0 0;
-            white-space: pre-line;
-        }
-        .ficha-links {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 16px;
-        }
-        .btn-ficha-link {
-            width: 100%;
-            text-align: center;
-            padding: 12px;
-            background: rgba(255, 42, 117, 0.14);
-            color: #ffffff;
-            border: 1px solid rgba(255, 42, 117, 0.42);
-            border-radius: 14px;
-            text-decoration: none;
-            font-size: 12.5px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        #botonMapa {
-            display: none;
-            background: rgba(0, 243, 255, 0.14);
-            color: var(--accent-cyan);
-            border-color: var(--spatial-highlight);
         }
     </style>
 
@@ -853,7 +745,7 @@
         async function obtenerUrlConCache(url) {
             if (!('caches' in window)) return url;
             try {
-                const cache = await caches.open('torimask-ar-cache-v4');
+                const cache = await caches.open('torimask-ar-cache-v5');
                 let response = await cache.match(url);
                 if (!response) {
                     response = await fetch(url, { cache: 'force-cache' });
@@ -1021,7 +913,6 @@
                 this.estado = 'OCULTO';
                 this.progresoMat = 0;
                 this.rastreandoEnVivo = false;
-                this.simulandoPreview = false;
                 this.tiempoPerdidaInicio = 0;
                 this.poseInicializada = false;
                 this.relojPulso = 0;
@@ -1111,7 +1002,7 @@
                     return false;
                 };
 
-                // Modelo 3D procedural de respaldo con tamaño único 3x
+                // Modelo 3D de respaldo en caso de error de red con el GLB
                 const construirModeloRespaldoProcedural = () => {
                     const root = new THREE.Group();
 
@@ -1367,14 +1258,13 @@
                 let ultimoTap = 0;
 
                 const esElementoUI = (target) => {
-                    return target && target.closest && target.closest('button, a, #panelInferior, #modalPreview');
+                    return target && target.closest && target.closest('button, a, #modalPreview');
                 };
 
                 window.addEventListener('pointerdown', (e) => {
                     if (this.estado === 'OCULTO' || esElementoUI(e.target)) return;
                     const ahora = performance.now();
                     if (ahora - ultimoTap < 280) {
-                        // Doble toque: restablece únicamente la orientación
                         this.targetRotUsuarioY = 0;
                         this.targetRotUsuarioX = 0;
                     }
@@ -1403,20 +1293,11 @@
                 window.addEventListener('pointercancel', () => { arrastrando = false; }, { passive: true });
 
                 // ============================================================
-                // ACTIVACIÓN POR TARGET DE MINDAR O MODO VISTA 3D COMPLETA
+                // ACTIVACIÓN EXCLUSIVA POR RASTREO DE CÁMARA (MINDAR)
                 // ============================================================
-                this.activarTarget = (esSimulacion = false) => {
-                    this.rastreandoEnVivo = !esSimulacion;
-                    this.simulandoPreview = esSimulacion;
+                this.activarTarget = () => {
+                    this.rastreandoEnVivo = true;
                     this.anclaObj.visible = true;
-
-                    if (esSimulacion) {
-                        this.anclaObj.position.set(0, 0, -600);
-                        this.anclaObj.quaternion.identity();
-                        // Escala única fija para el modo simulación (triple respecto al anterior)
-                        this.anclaObj.scale.setScalar(260);
-                        this.poseInicializada = true;
-                    }
 
                     if (this.mixer && this.actions.length > 0) {
                         this.mixer.timeScale = window.ficha.velocidadAnimacion ?? 1.0;
@@ -1439,39 +1320,29 @@
                         statusPill.classList.add('activo');
                     }
                     if (estadoUI) {
-                        estadoUI.textContent = esSimulacion
-                            ? "Espacio AR 360° Activo"
-                            : "Conectado · Explorable 360°";
+                        estadoUI.textContent = "Conectado · Explorable 360°";
                     }
                     if (window.mostrarHintExploracionUI) window.mostrarHintExploracionUI();
                 };
 
-                this.perderTarget = (inmediato = false) => {
+                this.perderTarget = () => {
                     this.rastreandoEnVivo = false;
-                    if (this.simulandoPreview && !inmediato) return;
-                    this.simulandoPreview = false;
 
                     if (this.estado !== 'OCULTO') {
-                        if (inmediato) {
-                            this.estado = 'DESMATERIALIZANDO';
-                            if (this.anilloEscaner) this.anilloEscaner.visible = true;
-                        } else {
-                            this.estado = 'RETENCION';
-                            this.tiempoPerdidaInicio = performance.now();
-                            if (statusPill) {
-                                statusPill.classList.remove('activo');
-                                statusPill.classList.add('retencion');
-                            }
-                            if (estadoUI) estadoUI.textContent = "Estabilizando...";
+                        this.estado = 'RETENCION';
+                        this.tiempoPerdidaInicio = performance.now();
+                        if (statusPill) {
+                            statusPill.classList.remove('activo');
+                            statusPill.classList.add('retencion');
                         }
+                        if (estadoUI) estadoUI.textContent = "Estabilizando...";
                     }
                 };
 
-                targetEl.addEventListener('targetFound', () => this.activarTarget(false));
-                targetEl.addEventListener('targetLost', () => this.perderTarget(false));
+                targetEl.addEventListener('targetFound', () => this.activarTarget());
+                targetEl.addEventListener('targetLost', () => this.perderTarget());
             },
 
-            // Mantiene los planos near/far amplios para que el tamaño 3x nunca se corte al acercarse
             ampliarFrustumCamara: function () {
                 const sceneEl = this.el.sceneEl;
                 if (!sceneEl || !sceneEl.camera) return;
@@ -1581,7 +1452,7 @@
                             }
                         }
                     }
-                } else if (this.estado === 'RETENCION' && !this.simulandoPreview) {
+                } else if (this.estado === 'RETENCION') {
                     const transcurrido = performance.now() - this.tiempoPerdidaInicio;
                     const maxRetencion = window.ficha.tiempoRetencionPerdidaMs || 5000;
 
@@ -1620,7 +1491,6 @@
                     );
                 }
 
-                // Tamaño 100% constante una vez materializado
                 this.grupoExploracion.scale.setScalar(factorMat);
             }
         });
@@ -1633,34 +1503,26 @@
     <video id="videoCamaraBase" autoplay muted playsinline webkit-playsinline></video>
 
     <!-- BOTÓN DE DESBLOQUEO (solo aparece si el navegador bloqueó el auto-inicio de cámara) -->
-    <button id="btnPermisoCamara" type="button">📷 Activar Cámara AR</button>
+    <button id="btnPermisoCamara" type="button">Activar Cámara AR</button>
 
     <div class="spatial-vignette"></div>
     <div id="flashPantalla"></div>
 
-    <!-- BARRA SUPERIOR SPATIAL GLASS -->
+    <!-- BARRA SUPERIOR MINIMALISTA: SOLO ESTADO DE ESCANEO E INSTAGRAM -->
     <div class="top-bar">
         <div class="status-pill" id="statusPill">
             <span class="status-dot"></span>
-            <span id="estadoCarga">Iniciando cámara...</span>
+            <span id="estadoCarga">Listo para escanear</span>
         </div>
 
-        <div class="top-actions">
-            <button id="btnSimularAR" class="btn-spatial-pill" type="button" aria-label="Desplegar modelo 3D en todo el espacio AR">
-                <span>⚡ Vista 3D</span>
-            </button>
-
-            <a id="btnInstagramTop" class="btn-spatial-pill btn-ig-top" href="https://www.instagram.com/asteroidae9999/?hl=en" target="_blank" rel="noopener noreferrer" aria-label="Instagram @asteroidae9999">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                </svg>
-                <span>@asteroidae9999</span>
-            </a>
-
-            <button id="btnAbrirFicha" class="btn-spatial-pill" type="button" aria-label="Información de la pieza">i</button>
-        </div>
+        <a id="btnInstagramTop" class="btn-ig-top" href="https://www.instagram.com/asteroidae9999/?hl=en" target="_blank" rel="noopener noreferrer" aria-label="Instagram @asteroidae9999">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+            </svg>
+            <span>@asteroidae9999</span>
+        </a>
     </div>
 
     <!-- GUÍA DE ESCANEO -->
@@ -1670,10 +1532,10 @@
         </div>
     </div>
 
-    <!-- PÍLDORA SUTIL DE GESTOS 360° (SIN ZOOM) -->
+    <!-- PÍLDORA SUTIL DE GESTOS 360° -->
     <div id="hintExploracion">Arrastra para girar 360° · Muévete para explorar · Doble toque centra</div>
 
-    <!-- DOCK DE CAPTURA SPATIAL GLASS (FOTO Y VIDEO) -->
+    <!-- DOCK DE CAPTURA FUTURISTA SEMITRANSPARENTE CON ICONOS ABSTRACTOS -->
     <div class="contenedor-controles">
         <div id="badgeTiempo">
             <span class="punto-parpadeo"></span>
@@ -1681,28 +1543,26 @@
         </div>
 
         <div class="dock-captura">
-            <div class="btn-captura-wrap">
-                <button class="btn-icono" id="btnFoto" type="button" aria-label="Tomar fotografía AR">
-                    <div class="nucleo-foto">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-                            <circle cx="12" cy="13" r="4"></circle>
-                        </svg>
-                    </div>
-                </button>
-            </div>
+            <!-- Botón Abstracto de Fotografía (Obturador de Rombo y Retícula Focal) -->
+            <button class="btn-abstract" id="btnFoto" type="button" aria-label="Capturar fotografía AR">
+                <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="16" cy="16" r="11" stroke-opacity="0.38" stroke-dasharray="4 3"></circle>
+                    <polygon points="16,6.5 25.5,16 16,25.5 6.5,16" stroke="var(--accent-cyan)" stroke-opacity="0.88"></polygon>
+                    <circle cx="16" cy="16" r="2.6" fill="currentColor" stroke="none"></circle>
+                </svg>
+            </button>
 
             <div class="dock-divider" aria-hidden="true"></div>
 
-            <div class="btn-captura-wrap">
-                <button class="btn-icono" id="btnVideo" type="button" aria-label="Grabar video AR">
-                    <div class="nucleo-video">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <circle cx="12" cy="12" r="6"></circle>
-                        </svg>
-                    </div>
-                </button>
-            </div>
+            <!-- Botón Abstracto de Video (Núcleo Orbital Concéntrico) -->
+            <button class="btn-abstract" id="btnVideo" type="button" aria-label="Grabar secuencia de video AR">
+                <svg viewBox="0 0 32 32" fill="none">
+                    <circle class="anillo-pulso" cx="16" cy="16" r="11" stroke="currentColor" stroke-opacity="0.38" stroke-width="1.3" stroke-dasharray="10 5"></circle>
+                    <circle cx="16" cy="16" r="7.5" stroke="var(--accent-magenta)" stroke-opacity="0.72" stroke-width="1.2"></circle>
+                    <circle class="nucleo-orbital" cx="16" cy="16" r="4.2"></circle>
+                    <rect class="stop-glyph" x="11.5" y="11.5" width="9" height="9" rx="2.2"></rect>
+                </svg>
+            </button>
         </div>
     </div>
 
@@ -1717,50 +1577,10 @@
             <div class="acciones-preview">
                 <button class="btn-modal" id="btnCerrarPreview" type="button">✕</button>
                 <button class="btn-modal" id="btnCompartir" type="button">Compartir</button>
-                <button class="btn-modal" id="btnDescargar" type="button">⬇ Guardar</button>
+                <button class="btn-modal" id="btnDescargar" type="button">Guardar</button>
             </div>
         </div>
     </div>
-
-    <!-- PANEL INFERIOR DE INFORMACIÓN -->
-    <section id="panelInferior">
-        <div class="cabecera-ficha">
-            <div>
-                <span class="badge-categoria" id="uiCategoria"></span>
-                <h1 class="titulo-obra" id="uiTitulo"></h1>
-            </div>
-            <button class="boton-cerrar-ficha" id="btnCerrarFicha" type="button">Cerrar</button>
-        </div>
-
-        <div class="datos-grid">
-            <div>
-                <span class="etiqueta">AUTOR</span>
-                <div class="valor" id="uiAutor"></div>
-            </div>
-            <div>
-                <span class="etiqueta">AÑO</span>
-                <div class="valor" id="uiAnio"></div>
-            </div>
-            <div style="grid-column: span 2;">
-                <span class="etiqueta">UBICACIÓN</span>
-                <div class="valor" id="uiUbicacion"></div>
-            </div>
-        </div>
-        <span class="etiqueta">DESCRIPCIÓN</span>
-        <p class="historia-texto" id="uiHistoria"></p>
-
-        <div class="ficha-links">
-            <a id="botonInstagramFicha" class="btn-ficha-link" href="https://www.instagram.com/asteroidae9999/?hl=en" target="_blank" rel="noopener noreferrer">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                </svg>
-                <span>Seguir en Instagram · @asteroidae9999</span>
-            </a>
-            <a id="botonMapa" class="btn-ficha-link" href="#" target="_blank" rel="noopener noreferrer">VER UBICACIÓN EN GOOGLE MAPS</a>
-        </div>
-    </section>
 
     <!-- ===================================================== -->
     <!-- ESCENA AR                                             -->
@@ -1803,7 +1623,6 @@
             const escenaEl = document.getElementById("escenaAR");
             const btnPermisoCamara = document.getElementById("btnPermisoCamara");
             const entidadModelo = document.getElementById("entidadModelo");
-            const btnSimularAR = document.getElementById("btnSimularAR");
 
             function arrancarCamaraAhora() {
                 if (window.solicitarStreamCamaraSeguro) {
@@ -1830,41 +1649,12 @@
             });
             observerVideos.observe(document.body, { childList: true });
 
-            fetch(window.ficha.marcadorMind, { method: "HEAD" })
-                .then((res) => {
-                    if (!res.ok) throw new Error("mind no encontrado");
-                })
-                .catch(() => {
-                    setTimeout(() => {
-                        const comp = entidadModelo.components["modelo-cyberpunk-ar"];
-                        if (comp && comp.estado === "OCULTO") {
-                            btnSimularAR.classList.add("activo");
-                            alDetectarTargetUI();
-                            comp.activarTarget(true);
-                        }
-                    }, 900);
-                });
-
-            document.getElementById("uiCategoria").textContent = window.ficha.categoria;
-            document.getElementById("uiTitulo").textContent = window.ficha.titulo;
-            document.getElementById("uiAutor").textContent = window.ficha.autor;
-            document.getElementById("uiAnio").textContent = window.ficha.anio;
-            document.getElementById("uiUbicacion").textContent = window.ficha.ubicacion;
-            document.getElementById("uiHistoria").textContent = window.ficha.historia;
-
             if (window.ficha.instagramUrl) {
                 document.getElementById("btnInstagramTop").href = window.ficha.instagramUrl;
-                document.getElementById("botonInstagramFicha").href = window.ficha.instagramUrl;
             }
 
             if (window.ficha.rotacionInicial) {
                 entidadModelo.setAttribute("rotation", window.ficha.rotacionInicial);
-            }
-
-            const botonMapa = document.getElementById("botonMapa");
-            if (window.ficha.mapa && window.ficha.mapa.trim() !== "") {
-                botonMapa.href = window.ficha.mapa;
-                botonMapa.style.display = "inline-flex";
             }
 
             function aplicarViewerPixelRatio() {
@@ -1881,13 +1671,7 @@
                 escenaEl.addEventListener('loaded', aplicarViewerPixelRatio);
             }
 
-            const panelInferior = document.getElementById("panelInferior");
-            const btnAbrirFicha = document.getElementById("btnAbrirFicha");
-            const btnCerrarFicha = document.getElementById("btnCerrarFicha");
-
-            btnAbrirFicha.addEventListener("click", () => panelInferior.classList.add("visible"));
-            btnCerrarFicha.addEventListener("click", () => panelInferior.classList.remove("visible"));
-
+            // Detección visual del sticker en cámara
             const objetivoAR = document.getElementById("objetivoAR");
             const uiEscaneo = document.getElementById("ui-escaneo");
             const marcoEscaner = document.getElementById("marcoEscaner");
@@ -1906,46 +1690,24 @@
                 }, 4200);
             };
 
-            function alDetectarTargetUI() {
+            objetivoAR.addEventListener("targetFound", () => {
                 clearTimeout(timeoutOcultarUI);
                 marcoEscaner.classList.add("detectado");
-                btnAbrirFicha.style.display = "inline-flex";
                 if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} }
 
                 timeoutOcultarUI = setTimeout(() => {
                     uiEscaneo.style.opacity = "0";
                 }, 320);
-            }
-
-            objetivoAR.addEventListener("targetFound", () => {
-                btnSimularAR.classList.remove("activo");
-                alDetectarTargetUI();
             });
 
             window.notificarPerdidaDefinitivaUI = () => {
                 clearTimeout(timeoutOcultarUI);
                 uiEscaneo.style.opacity = "1";
                 marcoEscaner.classList.remove("detectado");
-                panelInferior.classList.remove("visible");
                 hintExploracion.classList.remove("visible");
-                btnAbrirFicha.style.display = "none";
-                btnSimularAR.classList.remove("activo");
                 statusPill.classList.remove("activo", "retencion");
                 estadoCarga.textContent = "Listo para escanear";
             };
-
-            btnSimularAR.addEventListener("click", () => {
-                const comp = entidadModelo.components["modelo-cyberpunk-ar"];
-                if (!comp) return;
-                if (!comp.simulandoPreview) {
-                    btnSimularAR.classList.add("activo");
-                    alDetectarTargetUI();
-                    comp.activarTarget(true);
-                } else {
-                    btnSimularAR.classList.remove("activo");
-                    comp.perderTarget(true);
-                }
-            });
 
             // Captura de FOTO
             const btnFoto = document.getElementById("btnFoto");
